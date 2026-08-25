@@ -56,7 +56,7 @@ export default function Lobby() {
                 className={`
                   relative rounded-2xl p-4 text-left transition-all
                   ${difficulty === d.value
-                    ? 'bg-gradient-to-br ' + d.color + ' shadow-glow-gold scale-105'
+                    ? 'bg-gradient-to-br ' + d.color + ' scale-[1.03]'
                     : 'bg-ink-card border border-white/5'}
                 `}
               >
@@ -82,7 +82,7 @@ export default function Lobby() {
                 className={`
                   rounded-xl p-3 text-center transition-all
                   ${playerCount === p.value
-                    ? 'bg-gold text-ink shadow-glow-gold'
+                    ? 'bg-gold text-ink'
                     : 'bg-ink-card text-ivory border border-white/5'}
                 `}
               >
@@ -104,7 +104,7 @@ export default function Lobby() {
                 className={`
                   rounded-xl py-3 text-center font-bold transition-all num
                   ${blinds[1] === bb
-                    ? 'bg-gold text-ink shadow-glow-gold'
+                    ? 'bg-gold text-ink'
                     : 'bg-ink-card text-ivory border border-white/5'}
                 `}
               >

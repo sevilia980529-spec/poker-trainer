@@ -18,13 +18,13 @@ type Phase = 'connect' | 'lobby' | 'game';
 
 interface LobbyPlayer { name: string; seatIdx: number; connected: boolean }
 
-// 对手座位（相对牌桌容器），hero 固定在桌面下方
+// 对手座位（相对牌桌容器），hero 固定在桌面下方——全部收进容器内侧，避免手机端挡牌/出屏
 const SEAT_POS = [
-  'left-[6%] bottom-[-12%]',
-  'left-[-4%] top-[8%]',
-  'left-1/2 -translate-x-1/2 top-[-18%]',
-  'right-[-4%] top-[8%]',
-  'right-[6%] bottom-[-12%]',
+  'left-[3%] bottom-[-2%]',
+  'left-[0%] top-[14%]',
+  'left-1/2 -translate-x-1/2 top-[-8%]',
+  'right-[0%] top-[14%]',
+  'right-[3%] bottom-[-2%]',
 ];
 
 export default function FriendRoom() {
@@ -213,9 +213,9 @@ export default function FriendRoom() {
       {phase === 'game' && game && (
         <>
           <main className="flex-1 relative flex items-center justify-center px-2 min-h-0">
-            <div className="relative w-[min(96vw,820px)] aspect-[2.1/1]">
-              {/* 桌面呢绒：多层渐变 + 木质桌沿 + 外发光 */}
-              <div className="absolute inset-0 rounded-[50%] border-[10px] border-[#4a3325]
+            <div className="relative w-[min(96vw,820px)] aspect-[1.55/1] sm:aspect-[2.1/1]">
+              {/* 桌面呢绒：多层渐变 + 木质桌沿 + 外发光（纵向内缩，给座位让位） */}
+              <div className="absolute inset-x-0 top-[9%] bottom-[9%] rounded-[50%] border-[10px] border-[#4a3325]
                 bg-[radial-gradient(ellipse_at_center_top,#1A7A52_0%,#0E5C3A_35%,#084A2D_75%,#053822_100%)]
                 shadow-[inset_0_20px_60px_rgba(0,0,0,0.4),inset_0_-10px_30px_rgba(0,0,0,0.3),0_0_80px_rgba(14,92,58,0.35)]" />
               {/* 桌面中心聚光光斑 */}

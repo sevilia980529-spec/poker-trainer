@@ -245,7 +245,7 @@ export default function Blackjack() {
 
         {/* ===== 保险询问 ===== */}
         {game?.phase === 'insurance' && (
-          <div className="anim-pop relative left-0 flex flex-col items-center gap-2 bg-purple-950/50 border border-purple-700 rounded-2xl px-5 py-3 w-full max-w-md">
+          <div className="animate-pop-scale flex flex-col items-center gap-2 bg-purple-950/50 border border-purple-700 rounded-2xl px-5 py-3 w-full max-w-md">
             <p className="text-sm text-purple-200 text-center">
               庄家明牌是 A，要买保险吗？
               <span className="font-mono text-purple-300 ml-1">保费 {Math.floor(game.hands[0].bet / 2)}</span>

@@ -32,13 +32,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { cn } from '../lib/utils';
 import { Menu, GraduationCap, Volume2, VolumeX, Coins, Target, Club, Users, BookOpen, Spade, Trophy, Settings, Home as HomeIcon } from 'lucide-react';
 
-// 椭圆桌 5 个 AI 座位（hero 固定在桌面下方）
+// 椭圆桌 5 个 AI 座位（hero 固定在桌面下方）——全部收进容器内侧，避免手机端挡牌/出屏
 const AI_SEAT_POS = [
-  'left-[6%] bottom-[-12%]',
-  'left-[-4%] top-[8%]',
-  'left-1/2 -translate-x-1/2 top-[-18%]',
-  'right-[-4%] top-[8%]',
-  'right-[6%] bottom-[-12%]',
+  'left-[3%] bottom-[-2%]',
+  'left-[0%] top-[14%]',
+  'left-1/2 -translate-x-1/2 top-[-8%]',
+  'right-[0%] top-[14%]',
+  'right-[3%] bottom-[-2%]',
 ];
 
 const STYLE_EMOJI: Record<string, string> = {
@@ -48,11 +48,11 @@ const STYLE_EMOJI: Record<string, string> = {
 // 各座位中心相对牌桌容器的百分比坐标（用于筹码飞行动画）
 const SEAT_PCT_HERO = { x: 50, y: 108 };
 const SEAT_PCT_AI = [
-  { x: 10, y: 102 },   // 左下
-  { x: 1, y: 18 },     // 左上
-  { x: 50, y: -8 },    // 正上
-  { x: 99, y: 18 },    // 右上
-  { x: 90, y: 102 },   // 右下
+  { x: 12, y: 94 },    // 左下
+  { x: 8, y: 24 },     // 左上
+  { x: 50, y: -2 },    // 正上
+  { x: 92, y: 24 },    // 右上
+  { x: 88, y: 94 },    // 右下
 ];
 
 // AI 数量 → 使用哪些座位槽位（AI_SEAT_POS / SEAT_PCT_AI 的下标）
@@ -356,9 +356,9 @@ export default function PokerTrainer() {
 
       {/* ===== 牌桌 ===== */}
       <main className="flex-1 relative flex items-center justify-center px-2">
-        <div className="relative w-[min(96vw,820px)] aspect-[2.1/1]">
-          {/* 桌面呢绒：多层渐变 + 木质桌沿 + 外发光 */}
-          <div className="absolute inset-0 rounded-[50%] border-[10px] border-[#4a3325]
+        <div className="relative w-[min(96vw,820px)] aspect-[1.55/1] sm:aspect-[2.1/1]">
+          {/* 桌面呢绒：多层渐变 + 木质桌沿 + 外发光（纵向内缩，给座位让位） */}
+          <div className="absolute inset-x-0 top-[9%] bottom-[9%] rounded-[50%] border-[10px] border-[#4a3325]
             bg-[radial-gradient(ellipse_at_center_top,#1A7A52_0%,#0E5C3A_35%,#084A2D_75%,#053822_100%)]
             shadow-[inset_0_20px_60px_rgba(0,0,0,0.4),inset_0_-10px_30px_rgba(0,0,0,0.3),0_0_80px_rgba(14,92,58,0.35)]" />
           {/* 桌面中心聚光光斑 */}
