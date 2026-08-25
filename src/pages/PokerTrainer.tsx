@@ -13,7 +13,8 @@ import {
   BUY_IN, DAILY_BONUS, type PlayerProfile,
 } from '../store/points';
 import { PlayingCard } from '../components/PlayingCard';
-import { playDeal, playChips, playClick, playFold, playWin, playLose, isMuted, setMuted } from '../lib/sound';
+import { Chip, ChipStack } from '../components/ChipStack';
+import { playDeal, playChips, playClick, playFold, playWin, playLose, playShuffle, playPotSweep, isMuted, setMuted } from '../lib/sound';
 import { CoachPanel } from '../components/CoachPanel';
 import { ReviewList } from '../components/ReviewList';
 import { RulesGuideDialog } from '../components/RulesGuide';
@@ -44,6 +45,16 @@ const STYLE_EMOJI: Record<string, string> = {
   tag: '🦊', lag: '🔥', station: '🐷', nit: '🪨', balanced: '⚖️',
 };
 
+// 各座位中心相对牌桌容器的百分比坐标（用于筹码飞行动画），索引 = 玩家 id
+const SEAT_PCT = [
+  { x: 50, y: 108 },   // hero（桌面下方）
+  { x: 10, y: 102 },   // 左下
+  { x: 1, y: 18 },     // 左上
+  { x: 50, y: -8 },    // 正上
+  { x: 99, y: 18 },    // 右上
+  { x: 90, y: 102 },   // 右下
+];
+
 export default function PokerTrainer() {
   const [profile, setProfile] = useState<PlayerProfile>(loadProfile);
   const [game, setGame] = useState<GameState | null>(null);
@@ -64,7 +75,7 @@ export default function PokerTrainer() {
   const heroPosRef = useRef('');
 
   const startHand = useCallback((nextDealer: number) => {
-    playDeal();
+    playShuffle();
     aiStacksRef.current = aiStacksRef.current.map(c => (c <= 0 ? BUY_IN : c));
     if (heroStackRef.current <= 0) heroStackRef.current = Math.min(BUY_IN, profile.points);
     const players = [
@@ -120,6 +131,20 @@ export default function PokerTrainer() {
       return next;
     });
   };
+
+  // 结算时：底池筹码滑向赢家座位
+  const [potFly, setPotFly] = useState<{ x: number; y: number; amount: number } | null>(null);
+  useEffect(() => {
+    if (!game || game.street !== 'handOver' || !game.winners?.length) return;
+    const pot = game.winners.reduce((s, w) => s + w.amount, 0);
+    const target = SEAT_PCT[game.winners[0].playerId] ?? SEAT_PCT[0];
+    if (game.winners[0].playerId !== 0) playPotSweep();
+    setPotFly({ x: 50, y: 42, amount: pot });
+    const raf = requestAnimationFrame(() => requestAnimationFrame(() =>
+      setPotFly({ x: target.x, y: target.y, amount: pot })));
+    const timer = setTimeout(() => setPotFly(null), 1000);
+    return () => { cancelAnimationFrame(raf); clearTimeout(timer); };
+  }, [game?.street]);
 
   const onHandEnd = useCallback((finalState: GameState) => {
     const hero = finalState.players[0];
@@ -279,6 +304,14 @@ export default function PokerTrainer() {
             bg-[radial-gradient(ellipse_at_center,#2e7d5b_0%,#1b5e43_55%,#12402e_100%)]
             shadow-[inset_0_0_80px_rgba(0,0,0,0.45)]" />
 
+          {/* 结算：底池筹码滑向赢家 */}
+          {potFly && (
+            <div className="pot-fly absolute z-40 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ left: `${potFly.x}%`, top: `${potFly.y}%` }}>
+              <ChipStack amount={potFly.amount} size={30} />
+            </div>
+          )}
+
           {!game ? (
             <div className="absolute inset-0 flex items-center justify-center">
               <Button size="lg" className="bg-amber-600 hover:bg-amber-500 text-lg px-10 h-14 rounded-full shadow-xl"
@@ -290,6 +323,9 @@ export default function PokerTrainer() {
             <>
               {/* 中央：底池 + 公共牌 */}
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2">
+                {game.players.reduce((s, p) => s + p.handBet, 0) > 0 && game.street !== 'handOver' && (
+                  <ChipStack amount={game.players.reduce((s, p) => s + p.handBet, 0)} size={24} />
+                )}
                 <div key={game.players.reduce((s, p) => s + p.handBet, 0)}
                   className="text-amber-200 font-bold text-xs sm:text-sm bg-black/50 px-3 py-0.5 rounded-full anim-pot">
                   底池 {game.players.reduce((s, p) => s + p.handBet, 0)} · {STREET_NAME[game.street]}
@@ -320,12 +356,16 @@ export default function PokerTrainer() {
               {game.players.slice(1).map((p, i) => (
                 <div key={p.id} className={cn('absolute flex flex-col items-center gap-1', AI_SEAT_POS[i], p.folded && 'opacity-40')}>
                   <div className="flex gap-1">
-                    {p.hole.map((c, j) => (
-                      <span key={`${handNumber}-${p.id}-${j}`} className="anim-deal" style={{ animationDelay: `${(i * 2 + j) * 90}ms` }}>
-                        <PlayingCard card={c} small
-                          faceDown={game.street !== 'handOver' || p.folded || !game.winners} />
-                      </span>
-                    ))}
+                    {p.hole.map((c, j) => {
+                      const revealed = game.street === 'handOver' && !p.folded && !!game.winners;
+                      return (
+                        <span key={`${handNumber}-${p.id}-${j}-${revealed}`}
+                          className={revealed ? 'anim-flip' : 'anim-deal'}
+                          style={{ animationDelay: revealed ? `${j * 120}ms` : `${(i * 2 + j) * 90}ms` }}>
+                          <PlayingCard card={c} small faceDown={!revealed} />
+                        </span>
+                      );
+                    })}
                   </div>
                   <div className={cn('flex items-center gap-1.5 rounded-full bg-black/70 pl-1 pr-2.5 py-1 border',
                     game.actingIdx === p.id ? 'border-amber-400 shadow-[0_0_14px_rgba(251,191,36,0.6)]' : 'border-slate-700',
@@ -341,9 +381,20 @@ export default function PokerTrainer() {
                       <div className="text-[10px] text-amber-300 font-mono">{p.chips}</div>
                     </div>
                   </div>
+                  {game.actingIdx === p.id && game.street !== 'handOver' && (
+                    <div className="flex gap-1 py-0.5">
+                      {[0, 1, 2].map(d => (
+                        <span key={d} className="think-dot w-1 h-1 rounded-full bg-amber-300"
+                          style={{ animationDelay: `${d * 0.15}s` }} />
+                      ))}
+                    </div>
+                  )}
                   {p.streetBet > 0 && (
                     <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 translate-y-full">
-                      <span key={p.streetBet} className="anim-chip inline-block text-[10px] font-mono bg-amber-500/90 text-black font-bold rounded-full px-1.5 py-0.5">{p.streetBet}</span>
+                      <span key={p.streetBet} className="anim-chip inline-flex items-center gap-1 bg-black/70 rounded-full pl-0.5 pr-1.5 py-0.5">
+                        <Chip size={15} />
+                        <span className="text-[10px] font-mono text-amber-300 font-bold">{p.streetBet}</span>
+                      </span>
                     </div>
                   )}
                   {p.lastAction && (

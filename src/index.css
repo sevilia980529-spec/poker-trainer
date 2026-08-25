@@ -112,3 +112,13 @@
 @media (prefers-reduced-motion: reduce) {
   .anim-deal, .anim-flip, .anim-pop, .anim-pot, .anim-winner, .anim-chip { animation: none; }
 }
+
+/* AI 思考中的呼吸圆点 */
+@keyframes think-blink {
+  0%, 60%, 100% { opacity: 0.2; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-2px); }
+}
+.think-dot { animation: think-blink 0.9s ease-in-out infinite; }
+
+/* 底池筹码滑向赢家 */
+.pot-fly { transition: left 0.75s cubic-bezier(0.3, 0.9, 0.4, 1), top 0.75s cubic-bezier(0.3, 0.9, 0.4, 1), opacity 0.3s; }
