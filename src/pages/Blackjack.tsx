@@ -203,7 +203,7 @@ export default function Blackjack() {
               const isActive = game.phase === 'player' && game.activeHand === i;
               return (
                 <div key={i} className={cn('flex flex-col items-center gap-1.5 rounded-2xl px-3 py-2 border transition-all',
-                  isActive ? 'border-amber-400 bg-amber-950/25 shadow-[0_0_16px_rgba(251,191,36,0.25)]' : 'border-white/5')}>
+                  isActive ? 'border-2 border-gold bg-amber-950/25' : 'border-white/5')}>
                   <div className="flex gap-1.5">
                     {h.cards.map((c, j) => (
                       <span key={`${roundSeq}-${i}-${j}-${c.rank}${c.suit}`} className="anim-deal"
@@ -271,12 +271,14 @@ export default function Blackjack() {
           {!game || settled ? (
             <>
               {/* 筹码选注 */}
-              <div className="flex items-end gap-3">
+              <div className="flex items-end gap-4">
                 {BET_OPTIONS.map(b => (
                   <button key={b} onClick={() => { setBet(b); playClick(); }}
-                    className={cn('transition-all rounded-full',
-                      bet === b ? 'scale-110 ring-2 ring-amber-400 ring-offset-2 ring-offset-[#071007]' : 'opacity-70 hover:opacity-100')}>
-                    <Chip amount={b} size={44} />
+                    className={cn('transition-all duration-150 rounded-full',
+                      bet === b
+                        ? '-translate-y-1.5 scale-105 drop-shadow-[0_6px_8px_rgba(0,0,0,0.5)]'
+                        : 'opacity-60 hover:opacity-90')}>
+                    <Chip amount={b} size={48} />
                   </button>
                 ))}
               </div>

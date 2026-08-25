@@ -358,7 +358,7 @@ export default function PokerTrainer() {
       <main className="flex-1 relative flex items-center justify-center px-2">
         <div className="relative w-[min(96vw,820px)] aspect-[1.55/1] sm:aspect-[2.1/1]">
           {/* 桌面呢绒：多层渐变 + 木质桌沿 + 外发光（纵向内缩，给座位让位） */}
-          <div className="absolute inset-x-0 top-[9%] bottom-[9%] rounded-[50%] border-[10px] border-[#4a3325]
+          <div className="absolute inset-x-0 top-[9%] bottom-[9%] rounded-[2.5rem] border-[10px] border-[#4a3325]
             bg-[radial-gradient(ellipse_at_center_top,#1A7A52_0%,#0E5C3A_35%,#084A2D_75%,#053822_100%)]
             shadow-[inset_0_20px_60px_rgba(0,0,0,0.4),inset_0_-10px_30px_rgba(0,0,0,0.3),0_0_80px_rgba(14,92,58,0.35)]" />
           {/* 桌面中心聚光光斑 */}
@@ -429,7 +429,7 @@ export default function PokerTrainer() {
                     })}
                   </div>
                   <div className={cn('flex items-center gap-1.5 rounded-full bg-black/70 pl-1 pr-2.5 py-1 border',
-                    game.actingIdx === p.id ? 'border-amber-400 shadow-[0_0_14px_rgba(251,191,36,0.6)]' : 'border-slate-700',
+                    game.actingIdx === p.id ? 'border-2 border-gold' : 'border-slate-700',
                     game.street === 'handOver' && game.winners?.some(w => w.playerId === p.id) && 'anim-winner border-amber-300')}>
                     <span className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-sm relative">
                       {STYLE_EMOJI[p.style] ?? '🤖'}

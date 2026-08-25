@@ -34,7 +34,14 @@ export function Chip({ amount, size = 26, className }: { amount?: number; size?:
           color: c.text,
           fontSize: size * 0.32,
         }}>
-        <span className="absolute rounded-full" style={{ inset: size * 0.08, border: '1.5px dashed rgba(255,255,255,0.45)' }} />
+        {/* 赌场筹码边缘白点斑纹 */}
+        <span className="absolute inset-0 rounded-full pointer-events-none"
+          style={{
+            background: 'repeating-conic-gradient(rgba(255,255,255,0.85) 0deg 16deg, transparent 16deg 60deg)',
+            WebkitMaskImage: 'radial-gradient(circle closest-side, transparent 60%, black 62%)',
+            maskImage: 'radial-gradient(circle closest-side, transparent 60%, black 62%)',
+          }} />
+        <span className="absolute rounded-full" style={{ inset: size * 0.16, border: '1.5px dashed rgba(255,255,255,0.45)' }} />
         {amount !== undefined && <span className="relative z-10 drop-shadow-sm">{fmt(amount)}</span>}
       </span>
     </span>
