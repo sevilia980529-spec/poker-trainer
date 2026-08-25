@@ -1,0 +1,11 @@
+# Render 一键部署配置（https://render.com → New → Blueprint）
+services:
+  - type: web
+    name: poker-trainer
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build && npm run build:server
+    startCommand: node dist-server/server.mjs
+    envVars:
+      - key: NODE_ENV
+        value: production

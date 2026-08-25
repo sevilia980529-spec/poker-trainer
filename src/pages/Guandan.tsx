@@ -1,0 +1,293 @@
+// 掼蛋训练页面：你 + 对家 AI vs 左右 AI
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router';
+import {
+  newGuandanRound, gdPlay, analyzeCombo, isWild, gdCardLabel, teamOf, COMBO_NAME,
+  type GdState, type GdCard, type Level,
+} from '../games/guandan/engine';
+import { guandanAI } from '../games/guandan/ai';
+import { loadProfile, saveProfile } from '../store/points';
+import { RANK_LABEL } from '../engine/cards';
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { cn } from '../lib/utils';
+
+function GdCardView({ card, level, selected, onClick, mini }: {
+  card: GdCard; level: Level; selected?: boolean; onClick?: () => void; mini?: boolean;
+}) {
+  const wild = isWild(card, level);
+  const red = card.suit === 'h' || card.suit === 'd';
+  const isJoker = card.rank >= 15;
+  return (
+    <button
+      onClick={onClick}
+      disabled={!onClick}
+      className={cn(
+        mini ? 'w-7 h-10 text-[10px]' : 'w-10 h-14 text-sm',
+        'rounded border font-bold flex flex-col items-center justify-center leading-tight transition select-none',
+        isJoker ? 'bg-violet-100 text-violet-900 border-violet-400'
+          : red ? 'bg-white text-red-600 border-gray-300' : 'bg-white text-gray-900 border-gray-300',
+        wild && 'ring-2 ring-amber-400',
+        selected && '-translate-y-2 ring-2 ring-sky-400',
+        onClick && 'cursor-pointer hover:-translate-y-1',
+      )}>
+      {isJoker ? <span>{card.rank === 15 ? '小王' : '大王'}</span> : (
+        <>
+          <span>{RANK_LABEL[card.rank]}</span>
+          <span>{{ s: '♠', h: '♥', d: '♦', c: '♣' }[card.suit as string]}</span>
+        </>
+      )}
+      {wild && !mini && <span className="text-[8px] text-amber-600">配</span>}
+    </button>
+  );
+}
+
+export default function Guandan() {
+  const [profile, setProfile] = useState(loadProfile);
+  const [level, setLevel] = useState<[Level, Level]>([2, 2]);
+  const [playingLevel, setPlayingLevel] = useState<Level>(2);
+  const [game, setGame] = useState<GdState>(() => newGuandanRound([2, 2], 2, 0));
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [error, setError] = useState('');
+  const [showRoundOver, setShowRoundOver] = useState(false);
+  const [hintUsed, setHintUsed] = useState(false);
+  const creditedRef = useRef(false);
+
+  // AI 循环
+  useEffect(() => {
+    if (game.phase !== 'playing') return;
+    const seat = game.turn;
+    if (game.players[seat].isHero) return;
+    const t = setTimeout(() => {
+      const ids = guandanAI(game, seat);
+      const r = gdPlay(game, seat, ids);
+      if (r.ok && r.state) setGame(r.state);
+    }, 700 + Math.random() * 400);
+    return () => clearTimeout(t);
+  }, [game]);
+
+  // 局结束 → 积分结算
+  useEffect(() => {
+    if ((game.phase === 'roundOver' || game.phase === 'matchOver') && !creditedRef.current && game.roundResult) {
+      creditedRef.current = true;
+      const win = game.roundResult.winningTeam === 0;
+      const delta = win ? game.roundResult.levelGain * 50 : -50;
+      const matchBonus = game.phase === 'matchOver' ? (game.matchWinner === 0 ? 500 : -200) : 0;
+      setProfile(prev => {
+        const next = { ...prev, points: Math.max(0, prev.points + delta + matchBonus) };
+        saveProfile(next);
+        return next;
+      });
+      setShowRoundOver(true);
+    }
+  }, [game]);
+
+  const startRound = useCallback((lv: [Level, Level], pl: Level, first: number) => {
+    creditedRef.current = false;
+    setSelected(new Set());
+    setError('');
+    setShowRoundOver(false);
+    setGame(newGuandanRound(lv, pl, first));
+  }, []);
+
+  const nextRound = () => {
+    if (!game.roundResult) return;
+    const newLv = game.level;
+    const winTeam = game.roundResult.winningTeam;
+    setLevel(newLv);
+    setPlayingLevel(newLv[winTeam]); // 打胜方级牌
+    startRound(newLv, newLv[winTeam], game.roundResult.order[0]); // 头游领出
+  };
+
+  const restartMatch = () => {
+    setLevel([2, 2]);
+    setPlayingLevel(2);
+    startRound([2, 2], 2, 0);
+  };
+
+  const toggle = (id: number) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+    setError('');
+  };
+
+  const hero = game.players[0];
+  const myTurn = game.phase === 'playing' && game.turn === 0 && !hero.finished;
+  const canPass = game.currentTrick !== null && game.passCount < 3;
+
+  const play = () => {
+    if (!myTurn) return;
+    const r = gdPlay(game, 0, [...selected]);
+    if (!r.ok) { setError(r.reason ?? '无法出牌'); return; }
+    setSelected(new Set());
+    setHintUsed(false);
+    setGame(r.state!);
+  };
+
+  const pass = () => {
+    if (!myTurn || !canPass) return;
+    const r = gdPlay(game, 0, []);
+    if (r.ok) { setSelected(new Set()); setGame(r.state!); }
+  };
+
+  const hint = () => {
+    if (!myTurn) return;
+    const ids = guandanAI(game, 0);
+    if (ids.length === 0) {
+      setError(canPass ? '💡 建议：过牌' : '💡 你领出，必须出牌');
+      return;
+    }
+    setSelected(new Set(ids));
+    const cards = hero.hand.filter(c => ids.includes(c.id));
+    const combo = analyzeCombo(cards, game.playingLevel);
+    setError(`💡 建议出：${combo ? COMBO_NAME[combo.type] : ''} ${cards.map(gdCardLabel).join(' ')}`);
+    setHintUsed(true);
+  };
+
+  const selCards = hero.hand.filter(c => selected.has(c.id));
+  const selCombo = selCards.length > 0 ? analyzeCombo(selCards, game.playingLevel) : null;
+
+  // 最近一手出牌展示
+  const lastPlay = game.currentTrick?.plays[game.currentTrick.plays.length - 1];
+
+  const renderSeat = (seat: number, posClass: string, vertical: boolean) => {
+    const p = game.players[seat];
+    const theirLast = lastPlay && lastPlay.seat === seat ? lastPlay : null;
+    return (
+      <div className={cn('absolute', posClass, 'flex', vertical ? 'flex-col items-center' : 'flex-col items-center', 'gap-1')}>
+        <div className={cn('px-2.5 py-1 rounded-lg text-xs bg-slate-900/85 border text-center min-w-16',
+          game.turn === seat && game.phase === 'playing' ? 'border-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]' : 'border-slate-700')}>
+          <div className="font-semibold">
+            {p.name}
+            <span className={cn('ml-1', teamOf(seat) === 0 ? 'text-sky-400' : 'text-red-400')}>
+              {teamOf(seat) === 0 ? '我方' : '对方'}
+            </span>
+          </div>
+          <div className="text-slate-400">余 {p.hand.length} 张</div>
+          {p.finished && (
+            <div className="text-amber-300 font-bold">{['头游', '二游', '三游', '末游'][p.finishOrder - 1]}</div>
+          )}
+        </div>
+        {theirLast && (
+          <div className="flex gap-0.5 bg-slate-900/60 rounded p-1">
+            {theirLast.cards.map(c => <GdCardView key={c.id} card={c} level={game.playingLevel} mini />)}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+      <header className="flex items-center gap-4 px-5 py-3 border-b border-slate-800 bg-slate-900/60 flex-wrap">
+        <Link to="/" className="text-slate-400 hover:text-slate-200 text-sm">← 德州牌桌</Link>
+        <Link to="/drills" className="text-slate-400 hover:text-slate-200 text-sm">🎯 专项训练</Link>
+        <Link to="/blackjack" className="text-slate-400 hover:text-slate-200 text-sm">♣ 21点</Link>
+        <h1 className="text-lg font-bold">🃏 掼蛋训练场</h1>
+        <Badge className="bg-emerald-700">本局打 {RANK_LABEL[playingLevel]}</Badge>
+        <Badge variant="outline" className="text-amber-300 border-amber-700">红桃{RANK_LABEL[playingLevel]} = 百搭</Badge>
+        <span className="text-xs text-slate-400">我方级牌 {RANK_LABEL[level[0]]} · 对方 {RANK_LABEL[level[1]]}</span>
+        <Badge className="bg-amber-600 ml-auto">🫘 {profile.points.toLocaleString()} 分</Badge>
+      </header>
+
+      <main className="flex-1 flex flex-col p-3 gap-2 max-w-5xl mx-auto w-full">
+        {/* 桌面 */}
+        <div className="relative flex-1 min-h-72 rounded-3xl bg-gradient-to-b from-emerald-800/60 to-emerald-950/60 border border-emerald-900">
+          {renderSeat(2, 'top-2 left-1/2 -translate-x-1/2', false)}
+          {renderSeat(3, 'top-1/2 -translate-y-1/2 left-2', true)}
+          {renderSeat(1, 'top-1/2 -translate-y-1/2 right-2', true)}
+
+          {/* 中央信息 */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center space-y-1">
+            {lastPlay ? (
+              <>
+                <p className="text-xs text-slate-300">
+                  {game.players[lastPlay.seat].name}：{COMBO_NAME[lastPlay.combo.type]}
+                </p>
+                {lastPlay.seat === 0 && (
+                  <div className="flex gap-0.5 justify-center bg-slate-900/60 rounded p-1">
+                    {lastPlay.cards.map(c => <GdCardView key={c.id} card={c} level={game.playingLevel} mini />)}
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-xs text-slate-400">新一轮领出</p>
+            )}
+            {game.message && <p className="text-[11px] text-slate-500 max-w-64 mx-auto">{game.message}</p>}
+          </div>
+        </div>
+
+        {/* 提示/错误 */}
+        {error && (
+          <p className={cn('text-xs text-center', error.startsWith('💡') ? 'text-sky-300' : 'text-red-400')}>{error}</p>
+        )}
+
+        {/* 我的手牌 */}
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-1 justify-center">
+            {hero.hand.map(c => (
+              <GdCardView key={c.id} card={c} level={game.playingLevel}
+                selected={selected.has(c.id)} onClick={myTurn ? () => toggle(c.id) : undefined} />
+            ))}
+            {hero.hand.length === 0 && (
+              <p className="text-amber-300 font-bold">你已出完 · {['头游', '二游', '三游', '末游'][hero.finishOrder - 1]}</p>
+            )}
+          </div>
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-xs text-slate-400">
+              {selCards.length > 0
+                ? selCombo ? `已选 ${selCards.length} 张：${COMBO_NAME[selCombo.type]}` : `已选 ${selCards.length} 张：不是合法牌型`
+                : myTurn ? '点击手牌选择要出的牌' : '等待其他玩家…'}
+            </span>
+            {myTurn && (
+              <>
+                <Button className="bg-amber-600 hover:bg-amber-500" disabled={!selCombo} onClick={play}>出牌</Button>
+                {canPass && <Button variant="secondary" onClick={pass}>过牌</Button>}
+                <Button variant="outline" className="border-sky-700 text-sky-300" onClick={hint}>
+                  {hintUsed ? '再想想' : '💡 提示'}
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      </main>
+
+      {/* 局结束弹窗 */}
+      <Dialog open={showRoundOver} onOpenChange={setShowRoundOver}>
+        <DialogContent className="bg-slate-900 border-slate-700 text-slate-100 max-w-md">
+          <DialogHeader>
+            <DialogTitle>{game.phase === 'matchOver' ? '🏆 比赛结束' : '本局结束'}</DialogTitle>
+          </DialogHeader>
+          {game.roundResult && (
+            <div className="space-y-2 text-sm">
+              <p>名次：{game.roundResult.order.map((s, i) => (
+                <span key={s} className={cn(teamOf(s) === 0 ? 'text-sky-300' : 'text-red-300')}>
+                  {['①', '②', '③', '④'][i]}{game.players[s].name}{'　'}
+                </span>
+              ))}</p>
+              <p className={game.roundResult.winningTeam === 0 ? 'text-emerald-400' : 'text-red-400'}>
+                {game.roundResult.winningTeam === 0 ? '我方' : '对方'}升 {game.roundResult.levelGain} 级
+                （{game.roundResult.winningTeam === 0 ? '+' + game.roundResult.levelGain * 50 : '-50'} 积分）
+              </p>
+              <p className="text-slate-400">级牌：我方 {RANK_LABEL[game.level[0]]} · 对方 {RANK_LABEL[game.level[1]]}</p>
+              {game.phase === 'matchOver' && (
+                <p className="font-bold text-amber-300">
+                  {game.matchWinner === 0 ? '🎉 你方打穿 A 级，赢下整场比赛！+500 积分' : '对方打穿 A 级获胜。-200 积分'}
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            {game.phase === 'matchOver'
+              ? <Button className="bg-amber-600 hover:bg-amber-500" onClick={restartMatch}>再来一场</Button>
+              : <Button className="bg-amber-600 hover:bg-amber-500" onClick={nextRound}>下一局 ▶</Button>}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

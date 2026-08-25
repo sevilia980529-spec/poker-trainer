@@ -1,0 +1,239 @@
+// 好友房服务器：房间管理 + 权威游戏状态机 + AI 填充
+// 传输层解耦：RoomManager 接收/发送 JSON 消息，可挂到任意 ws WebSocketServer
+import type { WebSocket } from 'ws';
+import {
+  newHand, applyAction, legalActions,
+  type GameState, type ActionType, type Player,
+} from '../src/engine/game';
+import { botDecide, BOT_STYLES } from '../src/ai/bot';
+
+export interface ClientMsg {
+  type: 'create' | 'join' | 'start' | 'action' | 'leave';
+  name?: string;
+  roomId?: string;
+  action?: ActionType;
+  raiseTo?: number;
+}
+
+interface Human {
+  ws: WebSocket;
+  name: string;
+  playerId: number;   // 在 game.players 中的索引（开局时分配）
+  seatIdx: number;    // 大厅座位序
+  connected: boolean;
+}
+
+interface Room {
+  id: string;
+  humans: Human[];    // 大厅成员（按加入顺序）
+  hostSeat: number;
+  game: GameState | null;
+  dealerIdx: number;
+  handNumber: number;
+  aiStyles: string[]; // 本局 AI 填充位
+  aiThinking: boolean;
+}
+
+const AI_FILL_STYLES = ['tag', 'lag', 'station', 'nit', 'balanced'];
+const STACK = 2000;
+
+function makeRoomId(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let id = '';
+  for (let i = 0; i < 4; i++) id += chars[Math.floor(Math.random() * chars.length)];
+  return id;
+}
+
+export class RoomManager {
+  rooms = new Map<string, Room>();
+  private wsIndex = new Map<WebSocket, { roomId: string; seatIdx: number }>();
+
+  attach(ws: WebSocket) {
+    ws.on('message', raw => {
+      let msg: ClientMsg;
+      try { msg = JSON.parse(raw.toString()); } catch { return; }
+      try { this.handle(ws, msg); } catch (e) { console.error('[rooms] error', e); }
+    });
+    ws.on('close', () => this.handleClose(ws));
+  }
+
+  private send(ws: WebSocket, msg: unknown) {
+    if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
+  }
+
+  private handle(ws: WebSocket, msg: ClientMsg) {
+    switch (msg.type) {
+      case 'create': {
+        const room: Room = {
+          id: makeRoomId(), humans: [], hostSeat: 0,
+          game: null, dealerIdx: 0, handNumber: 0, aiStyles: [], aiThinking: false,
+        };
+        this.rooms.set(room.id, room);
+        this.joinRoom(ws, room, msg.name ?? '玩家');
+        break;
+      }
+      case 'join': {
+        const room = msg.roomId ? this.rooms.get(msg.roomId.toUpperCase()) : undefined;
+        if (!room) return this.send(ws, { type: 'error', message: '房间不存在，请检查房间码' });
+        if (room.game) return this.send(ws, { type: 'error', message: '该局已开始，等这手结束后让房主重开' });
+        if (room.humans.filter(h => h.connected).length >= 6) return this.send(ws, { type: 'error', message: '房间已满（6 人）' });
+        this.joinRoom(ws, room, msg.name ?? '玩家');
+        break;
+      }
+      case 'start': {
+        const loc = this.wsIndex.get(ws);
+        if (!loc) return;
+        const room = this.rooms.get(loc.roomId)!;
+        if (loc.seatIdx !== room.hostSeat) return this.send(ws, { type: 'error', message: '只有房主可以开局' });
+        this.startHand(room);
+        break;
+      }
+      case 'action': {
+        const loc = this.wsIndex.get(ws);
+        if (!loc) return;
+        const room = this.rooms.get(loc.roomId)!;
+        if (!room.game) return;
+        const human = room.humans.find(h => h.seatIdx === loc.seatIdx);
+        if (!human) return;
+        const g = room.game;
+        if (g.actingIdx !== human.playerId) return;
+        const res = applyAction(g, human.playerId, msg.action ?? 'fold', msg.raiseTo);
+        if (!res.ok) return this.send(ws, { type: 'error', message: res.reason });
+        room.game = res.state;
+        this.broadcastState(room);
+        this.maybeRunAI(room);
+        break;
+      }
+      case 'leave': this.handleClose(ws); break;
+    }
+  }
+
+  private joinRoom(ws: WebSocket, room: Room, name: string) {
+    const seatIdx = room.humans.length;
+    room.humans.push({ ws, name: name.slice(0, 12), playerId: -1, seatIdx, connected: true });
+    this.wsIndex.set(ws, { roomId: room.id, seatIdx });
+    this.send(ws, { type: 'joined', roomId: room.id, seatIdx, isHost: seatIdx === room.hostSeat });
+    this.broadcastLobby(room);
+  }
+
+  private broadcastLobby(room: Room) {
+    const players = room.humans.map(h => ({ name: h.name, seatIdx: h.seatIdx, connected: h.connected }));
+    for (const h of room.humans) {
+      this.send(h.ws, {
+        type: 'lobby', roomId: room.id, players,
+        hostSeat: room.hostSeat, youSeat: h.seatIdx,
+      });
+    }
+  }
+
+  private startHand(room: Room) {
+    const humans = room.humans.filter(h => h.connected);
+    if (humans.length < 2) {
+      const host = room.humans[room.hostSeat];
+      return this.send(host.ws, { type: 'error', message: '至少需要 2 名玩家才能开局' });
+    }
+    // 玩家位 = 人类 + AI 填充至 6
+    room.aiStyles = AI_FILL_STYLES.slice(0, 6 - humans.length);
+    const seatDefs = [
+      ...humans.map(h => ({ name: h.name, style: 'human', isHero: false, seatIdx: h.seatIdx })),
+      ...room.aiStyles.map(k => ({ name: BOT_STYLES[k].name.split('·')[0], style: k, isHero: false, seatIdx: -1 })),
+    ];
+    // 每个 client 视角 isHero 在 sanitize 时按 playerId 处理；这里统一 false
+    const players = seatDefs.map((s, i) => ({ id: i, name: s.name, style: s.style, chips: STACK, isHero: false }));
+    const g = newHand(players, room.dealerIdx % players.length, ++room.handNumber);
+    // 记录 human 的 playerId
+    humans.forEach((h, i) => { h.playerId = i; });
+    room.game = g;
+    this.broadcastState(room);
+    this.maybeRunAI(room);
+  }
+
+  /** 给每个成员发其视角的脱敏状态 */
+  private broadcastState(room: Room) {
+    if (!room.game) return;
+    for (const h of room.humans) {
+      if (!h.connected) continue;
+      const view = sanitizeState(room.game, h.playerId);
+      this.send(h.ws, { type: 'state', state: view, yourPlayerId: h.playerId });
+    }
+  }
+
+  /** AI / 断线托管行动循环 */
+  private maybeRunAI(room: Room) {
+    if (!room.game || room.aiThinking) return;
+    const g = room.game;
+    if (g.street === 'handOver') return;
+    const idx = g.actingIdx;
+    if (idx < 0) return;
+    const human = room.humans.find(h => h.playerId === idx);
+    const humanOnline = human?.connected === true;
+    if (humanOnline) return; // 等真人操作
+
+    room.aiThinking = true;
+    setTimeout(() => {
+      room.aiThinking = false;
+      if (!room.game) return;
+      const cur = room.game;
+      if (cur.actingIdx !== idx || cur.street === 'handOver') return;
+      let res;
+      if (human && !humanOnline) {
+        // 断线托管：能过牌就过牌，否则弃牌
+        const la = legalActions(cur, idx);
+        res = applyAction(cur, idx, la.canCheck ? 'check' : 'fold');
+      } else {
+        const style = BOT_STYLES[cur.players[idx].style] ?? BOT_STYLES.balanced;
+        const d = botDecide(cur, idx, style);
+        res = applyAction(cur, idx, d.action, d.raiseTo);
+      }
+      if (res.ok) {
+        room.game = res.state;
+        this.broadcastState(room);
+        if (res.handEnded) {
+          room.dealerIdx = (room.dealerIdx + 1) % room.game.players.length;
+        } else {
+          this.maybeRunAI(room);
+        }
+      }
+    }, 700 + Math.random() * 500);
+  }
+
+  private handleClose(ws: WebSocket) {
+    const loc = this.wsIndex.get(ws);
+    if (!loc) return;
+    this.wsIndex.delete(ws);
+    const room = this.rooms.get(loc.roomId);
+    if (!room) return;
+    const human = room.humans.find(h => h.seatIdx === loc.seatIdx);
+    if (!human) return;
+    human.connected = false;
+    if (!room.game) {
+      // 大厅中退出：移除并移交房主
+      room.humans = room.humans.filter(h => h.seatIdx !== loc.seatIdx);
+      if (room.humans.length === 0) { this.rooms.delete(room.id); return; }
+      if (room.hostSeat === loc.seatIdx) room.hostSeat = room.humans[0].seatIdx;
+      this.broadcastLobby(room);
+    } else {
+      // 游戏中断线：广播并托管
+      this.broadcastLobby(room);
+      this.maybeRunAI(room); // 若正轮到 TA，立即托管
+    }
+  }
+}
+
+/** 脱敏：隐藏其他玩家的手牌（除非摊牌/结束且未弃牌） */
+export function sanitizeState(state: GameState, viewerPlayerId: number): GameState {
+  const reveal = state.street === 'handOver' || state.street === 'showdown';
+  const players: Player[] = state.players.map(p => {
+    if (p.id === viewerPlayerId) return p;
+    if (reveal && !p.folded) return p;
+    return { ...p, hole: [] };
+  });
+  return { ...state, players, deck: [] };
+}
+
+/** 挂载到 ws WebSocketServer */
+export function attachRoomServer(wss: import('ws').WebSocketServer): RoomManager {
+  const mgr = new RoomManager();
+  wss.on('connection', ws => mgr.attach(ws));
+  return mgr;
+}
