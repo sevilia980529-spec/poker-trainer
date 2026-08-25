@@ -91,6 +91,8 @@ export default function PokerTrainer() {
   });
   const heroStackRef = useRef(BUY_IN);
   const aiStacksRef = useRef<number[]>([]);
+  const nickname = useUserStore((s) => s.nickname);
+  const avatar = useUserStore((s) => s.avatar);
   const startStackRef = useRef(BUY_IN);
   const heroPosRef = useRef('');
 
@@ -355,10 +357,13 @@ export default function PokerTrainer() {
       {/* ===== 牌桌 ===== */}
       <main className="flex-1 relative flex items-center justify-center px-2">
         <div className="relative w-[min(96vw,820px)] aspect-[2.1/1]">
-          {/* 桌面呢绒 */}
-          <div className="absolute inset-0 rounded-[50%] border-[10px] border-[#4a3325] shadow-2xl
-            bg-[radial-gradient(ellipse_at_center,#1A7A52_0%,#0E5C3A_55%,#084A2D_100%)]
-            shadow-[inset_0_0_80px_rgba(0,0,0,0.45)]" />
+          {/* 桌面呢绒：多层渐变 + 木质桌沿 + 外发光 */}
+          <div className="absolute inset-0 rounded-[50%] border-[10px] border-[#4a3325]
+            bg-[radial-gradient(ellipse_at_center_top,#1A7A52_0%,#0E5C3A_35%,#084A2D_75%,#053822_100%)]
+            shadow-[inset_0_20px_60px_rgba(0,0,0,0.4),inset_0_-10px_30px_rgba(0,0,0,0.3),0_0_80px_rgba(14,92,58,0.35)]" />
+          {/* 桌面中心聚光光斑 */}
+          <div className="absolute left-1/2 top-[38%] -translate-x-1/2 -translate-y-1/2 w-2/5 h-1/3 rounded-[50%] pointer-events-none"
+            style={{ background: 'radial-gradient(ellipse, rgba(255,255,200,0.09) 0%, transparent 70%)' }} />
 
           {/* 结算：底池筹码滑向赢家 */}
           {potFly && (
@@ -383,7 +388,7 @@ export default function PokerTrainer() {
                   <ChipStack amount={game.players.reduce((s, p) => s + p.handBet, 0)} size={24} />
                 )}
                 <div key={game.players.reduce((s, p) => s + p.handBet, 0)}
-                  className="text-amber-200 font-bold text-xs sm:text-sm bg-black/50 px-3 py-0.5 rounded-full anim-pot">
+                  className="text-gold font-bold text-xs sm:text-sm bg-gold/25 backdrop-blur-sm border border-gold/60 px-3 py-0.5 rounded-full anim-pot num">
                   底池 {game.players.reduce((s, p) => s + p.handBet, 0)} · {STREET_NAME[game.street]}
                 </div>
                 <div className="flex gap-1 sm:gap-1.5">
@@ -393,7 +398,7 @@ export default function PokerTrainer() {
                     </span>
                   ))}
                   {Array.from({ length: 5 - game.community.length }).map((_, i) => (
-                    <div key={`e${i}`} className="w-12 h-17 rounded-md border-2 border-white/10" />
+                    <div key={`e${i}`} className="w-12 aspect-[5/7] rounded-md border-2 border-white/10" />
                   ))}
                 </div>
                 {game.street === 'handOver' && (
@@ -468,12 +473,9 @@ export default function PokerTrainer() {
 
       {/* ===== Hero 区域：手牌 + 教练条 + 操作 ===== */}
       {game && (
-        <footer className="relative z-30 pb-3 pt-1 flex flex-col items-center gap-2 safe-bottom">
+        <footer className="relative z-30 pb-3 pt-2 flex flex-col items-center gap-2 safe-bottom bg-gradient-to-t from-ink via-ink/95 to-ink/70 border-t border-white/5">
           {/* 位置 + 手牌 */}
           <div className="flex flex-col items-center gap-1">
-            <span className="text-[10px] text-slate-400 bg-black/50 rounded-full px-2 py-0.5">
-              {heroPositionName(game, 0)}{game.dealerIdx === 0 && ' · 庄家'}
-            </span>
             <div className="flex gap-2">
               {game.players[0].hole.map((c, i) => (
                 <span key={`${handNumber}-${cardToString(c)}`} className="anim-deal" style={{ animationDelay: `${i * 130}ms` }}>
@@ -481,6 +483,18 @@ export default function PokerTrainer() {
                 </span>
               ))}
             </div>
+          </div>
+
+          {/* 我的信息行：头像 + 昵称 + 位置 | 筹码 */}
+          <div className="w-full max-w-lg flex items-center justify-between text-xs px-4">
+            <div className="flex items-center gap-1.5">
+              <span className="text-base">{avatar}</span>
+              <span className="text-ivory font-medium">{nickname}</span>
+              <span className="text-gold/80 font-bold">
+                · {heroPositionName(game, 0)}{game.dealerIdx === 0 && ' · 庄家'}
+              </span>
+            </div>
+            <div className="text-gold font-bold num">💰 {game.players[0].chips.toLocaleString()}</div>
           </div>
 
           {/* 教练建议条（点开看详情） */}
@@ -536,28 +550,28 @@ export default function PokerTrainer() {
               )}
               <div className="flex items-center gap-2 justify-center">
                 {(la!.canFold || la!.canCall) && (
-                  <Button className="rounded-full h-12 px-6 bg-red-700 hover:bg-red-600 text-base" onClick={() => heroAct('fold')}>弃牌</Button>
+                  <Button className="rounded-xl h-12 px-6 bg-danger hover:bg-red-600 text-base font-semibold" onClick={() => heroAct('fold')}>弃牌</Button>
                 )}
                 {la!.canCheck && (
-                  <Button className="rounded-full h-12 px-6 bg-slate-600 hover:bg-slate-500 text-base" onClick={() => heroAct('check')}>过牌</Button>
+                  <Button className="rounded-xl h-12 px-6 bg-ink-light hover:bg-ink-card border border-gold-dark/40 text-ivory text-base font-semibold" onClick={() => heroAct('check')}>过牌</Button>
                 )}
                 {la!.canCall && (
-                  <Button className="rounded-full h-12 px-6 bg-blue-600 hover:bg-blue-500 text-base" onClick={() => heroAct('call')}>
+                  <Button className="rounded-xl h-12 px-6 bg-ink-light hover:bg-ink-card border border-gold-dark/40 text-ivory text-base font-semibold" onClick={() => heroAct('call')}>
                     跟注 {la!.callAmount}
                   </Button>
                 )}
                 {la!.canRaise && !showRaise && (
-                  <Button className="rounded-full h-12 px-6 bg-emerald-600 hover:bg-emerald-500 text-base" onClick={() => setShowRaise(true)}>
+                  <Button className="rounded-xl h-12 px-6 bg-gold hover:bg-gold-light text-ink text-base font-bold shadow-card" onClick={() => setShowRaise(true)}>
                     加注
                   </Button>
                 )}
                 {la!.canRaise && showRaise && (
                   <>
-                    <Button className="rounded-full h-12 px-5 bg-emerald-600 hover:bg-emerald-500 text-base"
+                    <Button className="rounded-xl h-12 px-5 bg-gold hover:bg-gold-light text-ink text-base font-bold shadow-card"
                       onClick={() => heroAct(raiseAmt >= la!.maxRaiseTo ? 'allin' : game.currentBet > 0 ? 'raise' : 'bet', raiseAmt)}>
                       {raiseAmt >= la!.maxRaiseTo ? `全下 ${raiseAmt}` : `加到 ${raiseAmt}`}
                     </Button>
-                    <Button variant="ghost" className="rounded-full text-slate-400" onClick={() => setShowRaise(false)}>收起</Button>
+                    <Button variant="ghost" className="rounded-xl text-slate-400" onClick={() => setShowRaise(false)}>收起</Button>
                   </>
                 )}
               </div>

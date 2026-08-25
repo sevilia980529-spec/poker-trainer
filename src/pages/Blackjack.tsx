@@ -280,7 +280,7 @@ export default function Blackjack() {
                   </button>
                 ))}
               </div>
-              <Button size="lg" className="rounded-full bg-amber-600 hover:bg-amber-500 px-10 h-13 text-lg shadow-xl"
+              <Button size="lg" className="rounded-full bg-amber-600 hover:bg-amber-500 px-10 h-12 text-lg shadow-xl"
                 disabled={!canAffordBet} onClick={deal}>
                 {game ? '再来一局' : '下注发牌'}
               </Button>

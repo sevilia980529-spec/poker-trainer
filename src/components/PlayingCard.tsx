@@ -4,7 +4,7 @@ import { RANK_LABEL, SUIT_SYMBOL } from '../engine/cards';
 import { cn } from '../lib/utils';
 
 export function PlayingCard({ card, faceDown, small }: { card?: Card; faceDown?: boolean; small?: boolean }) {
-  const size = small ? 'w-9 h-13' : 'w-12 h-17';
+  const size = small ? 'w-9 aspect-[5/7]' : 'w-12 aspect-[5/7]';
   const corner = small ? 'text-[7px]' : 'text-[9px]';
   const center = small ? 'text-sm' : 'text-xl';
 

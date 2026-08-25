@@ -214,15 +214,18 @@ export default function FriendRoom() {
         <>
           <main className="flex-1 relative flex items-center justify-center px-2 min-h-0">
             <div className="relative w-[min(96vw,820px)] aspect-[2.1/1]">
-              {/* 桌面呢绒 */}
-              <div className="absolute inset-0 rounded-[50%] border-[10px] border-[#4a3325] shadow-2xl
-                bg-[radial-gradient(ellipse_at_center,#1A7A52_0%,#0E5C3A_55%,#084A2D_100%)]
-                shadow-[inset_0_0_80px_rgba(0,0,0,0.45)]" />
+              {/* 桌面呢绒：多层渐变 + 木质桌沿 + 外发光 */}
+              <div className="absolute inset-0 rounded-[50%] border-[10px] border-[#4a3325]
+                bg-[radial-gradient(ellipse_at_center_top,#1A7A52_0%,#0E5C3A_35%,#084A2D_75%,#053822_100%)]
+                shadow-[inset_0_20px_60px_rgba(0,0,0,0.4),inset_0_-10px_30px_rgba(0,0,0,0.3),0_0_80px_rgba(14,92,58,0.35)]" />
+              {/* 桌面中心聚光光斑 */}
+              <div className="absolute left-1/2 top-[38%] -translate-x-1/2 -translate-y-1/2 w-2/5 h-1/3 rounded-[50%] pointer-events-none"
+                style={{ background: 'radial-gradient(ellipse, rgba(255,255,200,0.09) 0%, transparent 70%)' }} />
 
               {/* 中央：底池 + 公共牌 */}
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1.5">
                 {pot > 0 && game.street !== 'handOver' && <ChipStack amount={pot} size={22} />}
-                <div key={pot} className="text-amber-200 font-bold text-xs sm:text-sm bg-black/50 px-3 py-0.5 rounded-full anim-pot">
+                <div key={pot} className="text-gold font-bold text-xs sm:text-sm bg-gold/25 backdrop-blur-sm border border-gold/60 px-3 py-0.5 rounded-full anim-pot num">
                   底池 {pot} · {STREET_NAME[game.street]}
                 </div>
                 <div className="flex gap-1 sm:gap-1.5">
@@ -232,7 +235,7 @@ export default function FriendRoom() {
                     </span>
                   ))}
                   {Array.from({ length: 5 - game.community.length }).map((_, i) => (
-                    <div key={`e${i}`} className="w-12 h-17 rounded-md border-2 border-white/10" />
+                    <div key={`e${i}`} className="w-12 aspect-[5/7] rounded-md border-2 border-white/10" />
                   ))}
                 </div>
                 {game.street === 'handOver' && (
