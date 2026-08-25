@@ -15,6 +15,7 @@ import {
 import { PlayingCard } from '../components/PlayingCard';
 import { CoachPanel } from '../components/CoachPanel';
 import { ReviewList } from '../components/ReviewList';
+import { RulesGuideDialog } from '../components/RulesGuide';
 import { Button } from '../components/ui/button';
 import { Slider } from '../components/ui/slider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
@@ -53,6 +54,7 @@ export default function PokerTrainer() {
   const [showReview, setShowReview] = useState(false);
   const [handResult, setHandResult] = useState<{ delta: number; info: string } | null>(null);
   const [reviews, setReviews] = useState(loadReviews);
+  const [showRules, setShowRules] = useState(false);
   const heroStackRef = useRef(BUY_IN);
   const aiStacksRef = useRef<number[]>(STYLE_KEYS.map(() => BUY_IN));
   const startStackRef = useRef(BUY_IN);
@@ -92,7 +94,7 @@ export default function PokerTrainer() {
         setGame(res.state);
         if (res.handEnded) onHandEnd(res.state);
       }
-    }, 600 + Math.random() * 450);
+    }, 1200 + Math.random() * 900);
     return () => clearTimeout(timer);
   }, [game]);
 
@@ -193,6 +195,7 @@ export default function PokerTrainer() {
             <DropdownMenuItem asChild><Link to="/blackjack">♣ 21点训练室</Link></DropdownMenuItem>
             <DropdownMenuItem asChild><Link to="/guandan">🃏 掼蛋训练场</Link></DropdownMenuItem>
             <DropdownMenuItem asChild><Link to="/room">👥 好友房</Link></DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setShowRules(true)}>📖 规则与术语</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setCoachOn(v => !v)}>
               {coachOn ? '🔕 关闭实时教练' : '🎓 开启实时教练'}
             </DropdownMenuItem>
@@ -407,6 +410,9 @@ export default function PokerTrainer() {
           )}
         </footer>
       )}
+
+      {/* 规则与术语弹窗 */}
+      <RulesGuideDialog open={showRules} onOpenChange={setShowRules} />
 
       {/* 复盘弹窗 */}
       <Dialog open={showReview} onOpenChange={setShowReview}>

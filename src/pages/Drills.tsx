@@ -5,6 +5,7 @@ import { genDrill, DRILL_CATEGORY_INFO, type Drill, type DrillCategory } from '.
 import { loadDrillStats, recordAnswer, DRILL_REWARD, type DrillStats } from '../store/drillStats';
 import { loadProfile, saveProfile } from '../store/points';
 import { PlayingCard } from '../components/PlayingCard';
+import { RulesGuideDialog } from '../components/RulesGuide';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { cn } from '../lib/utils';
@@ -16,6 +17,7 @@ export default function Drills() {
   const [drill, setDrill] = useState<Drill>(() => genDrill('preflop'));
   const [picked, setPicked] = useState<string | null>(null);
   const [stats, setStats] = useState<DrillStats>(loadDrillStats);
+  const [showRules, setShowRules] = useState(false);
 
   const nextDrill = useCallback((cat: DrillCategory) => {
     setDrill(genDrill(cat));
@@ -44,6 +46,7 @@ export default function Drills() {
         <Link to="/" className="text-slate-400 hover:text-slate-200 text-sm">← 牌桌</Link>
         <Link to="/blackjack" className="text-slate-400 hover:text-slate-200 text-sm">♣ 21点</Link>
         <h1 className="text-lg font-bold">🎯 专项训练</h1>
+        <button onClick={() => setShowRules(true)} className="text-slate-400 hover:text-slate-200 text-sm">📖 规则术语</button>
         <div className="text-xs text-slate-400 flex gap-3 ml-auto">
           <span>已答 {stats.answered}</span>
           <span>正确率 {acc}%</span>
@@ -139,6 +142,8 @@ export default function Drills() {
           </Button>
         )}
       </main>
+
+      <RulesGuideDialog open={showRules} onOpenChange={setShowRules} />
     </div>
   );
 }

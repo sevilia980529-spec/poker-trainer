@@ -1,8 +1,9 @@
 // 掼蛋训练页面：你 + 对家 AI vs 左右 AI
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import {
   newGuandanRound, gdPlay, analyzeCombo, isWild, gdCardLabel, teamOf, COMBO_NAME,
+  rankPower,
   type GdState, type GdCard, type Level,
 } from '../games/guandan/engine';
 import { guandanAI } from '../games/guandan/ai';
@@ -24,13 +25,13 @@ function GdCardView({ card, level, selected, onClick, mini }: {
       onClick={onClick}
       disabled={!onClick}
       className={cn(
-        mini ? 'w-7 h-10 text-[10px]' : 'w-10 h-14 text-sm',
-        'rounded border font-bold flex flex-col items-center justify-center leading-tight transition select-none',
+        mini ? 'w-7 h-10 text-[10px]' : 'w-11 h-16 text-sm',
+        'rounded border font-bold flex flex-col items-center justify-center leading-tight transition select-none shadow-md',
         isJoker ? 'bg-violet-100 text-violet-900 border-violet-400'
           : red ? 'bg-white text-red-600 border-gray-300' : 'bg-white text-gray-900 border-gray-300',
         wild && 'ring-2 ring-amber-400',
-        selected && '-translate-y-2 ring-2 ring-sky-400',
-        onClick && 'cursor-pointer hover:-translate-y-1',
+        selected && '-translate-y-3.5 ring-2 ring-sky-400',
+        onClick && 'cursor-pointer hover:-translate-y-2',
       )}>
       {isJoker ? <span>{card.rank === 15 ? '小王' : '大王'}</span> : (
         <>
@@ -43,12 +44,48 @@ function GdCardView({ card, level, selected, onClick, mini }: {
   );
 }
 
+// 扇形手持布局：牌相互重叠，像手里拿牌一样；选中的牌弹起
+const HAND_CARD_W = 44; // 对应 w-11
+const HAND_CARD_H = 64; // 对应 h-16
+
+function HandFan({ hand, level, selected, canPick, onToggle }: {
+  hand: GdCard[]; level: Level; selected: Set<number>; canPick: boolean; onToggle: (id: number) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [w, setW] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => setW(el.clientWidth);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const n = hand.length;
+  const step = n > 1 ? Math.min(30, Math.max(9, (w - HAND_CARD_W) / (n - 1))) : 0;
+  const totalW = n > 0 ? (n - 1) * step + HAND_CARD_W : 0;
+  const startX = Math.max(0, (w - totalW) / 2);
+  return (
+    <div ref={ref} className="relative w-full" style={{ height: HAND_CARD_H + 18 }}>
+      {hand.map((c, i) => (
+        <div key={c.id} className="absolute bottom-0 transition-transform duration-150"
+          style={{ left: startX + i * step, zIndex: i }}>
+          <GdCardView card={c} level={level}
+            selected={selected.has(c.id)} onClick={canPick ? () => onToggle(c.id) : undefined} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Guandan() {
   const [profile, setProfile] = useState(loadProfile);
   const [level, setLevel] = useState<[Level, Level]>([2, 2]);
   const [playingLevel, setPlayingLevel] = useState<Level>(2);
   const [game, setGame] = useState<GdState>(() => newGuandanRound([2, 2], 2, 0));
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [sortMode, setSortMode] = useState<'rank' | 'suit'>('rank');
   const [error, setError] = useState('');
   const [showRoundOver, setShowRoundOver] = useState(false);
   const [hintUsed, setHintUsed] = useState(false);
@@ -63,7 +100,7 @@ export default function Guandan() {
       const ids = guandanAI(game, seat);
       const r = gdPlay(game, seat, ids);
       if (r.ok && r.state) setGame(r.state);
-    }, 700 + Math.random() * 400);
+    }, 1300 + Math.random() * 700);
     return () => clearTimeout(t);
   }, [game]);
 
@@ -151,6 +188,18 @@ export default function Guandan() {
   const selCards = hero.hand.filter(c => selected.has(c.id));
   const selCombo = selCards.length > 0 ? analyzeCombo(selCards, game.playingLevel) : null;
 
+  // 手牌展示顺序：按大小（默认，引擎已排好）或按花色理牌
+  const displayHand = useMemo(() => {
+    if (sortMode === 'rank') return hero.hand;
+    const suitOrder = ['j', 's', 'h', 'c', 'd']; // 王牌最前，再按花色分组
+    return [...hero.hand].sort((a, b) => {
+      const sa = suitOrder.indexOf(a.suit as string);
+      const sb = suitOrder.indexOf(b.suit as string);
+      if (sa !== sb) return sa - sb;
+      return rankPower(b.rank, game.playingLevel) - rankPower(a.rank, game.playingLevel);
+    });
+  }, [hero.hand, sortMode, game.playingLevel]);
+
   // 最近一手出牌展示
   const lastPlay = game.currentTrick?.plays[game.currentTrick.plays.length - 1];
 
@@ -226,18 +275,22 @@ export default function Guandan() {
           <p className={cn('text-xs text-center', error.startsWith('💡') ? 'text-sky-300' : 'text-red-400')}>{error}</p>
         )}
 
-        {/* 我的手牌 */}
+        {/* 我的手牌（扇形手持布局） */}
         <div className="space-y-2">
-          <div className="flex flex-wrap gap-1 justify-center">
-            {hero.hand.map(c => (
-              <GdCardView key={c.id} card={c} level={game.playingLevel}
-                selected={selected.has(c.id)} onClick={myTurn ? () => toggle(c.id) : undefined} />
-            ))}
-            {hero.hand.length === 0 && (
-              <p className="text-amber-300 font-bold">你已出完 · {['头游', '二游', '三游', '末游'][hero.finishOrder - 1]}</p>
-            )}
-          </div>
-          <div className="flex items-center justify-center gap-2">
+          {hero.hand.length > 0 ? (
+            <HandFan hand={displayHand} level={game.playingLevel} selected={selected}
+              canPick={myTurn} onToggle={toggle} />
+          ) : (
+            <p className="text-amber-300 font-bold text-center py-4">
+              你已出完 · {['头游', '二游', '三游', '末游'][hero.finishOrder - 1]}
+            </p>
+          )}
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            <button
+              onClick={() => setSortMode(m => (m === 'rank' ? 'suit' : 'rank'))}
+              className="text-xs rounded-full px-3 py-1.5 border border-slate-600 bg-slate-800/80 text-slate-300 hover:bg-slate-700">
+              🔄 理牌 · {sortMode === 'rank' ? '按大小' : '按花色'}
+            </button>
             <span className="text-xs text-slate-400">
               {selCards.length > 0
                 ? selCombo ? `已选 ${selCards.length} 张：${COMBO_NAME[selCombo.type]}` : `已选 ${selCards.length} 张：不是合法牌型`
