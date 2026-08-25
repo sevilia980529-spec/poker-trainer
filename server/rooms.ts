@@ -32,10 +32,14 @@ interface Room {
   handNumber: number;
   aiStyles: string[]; // 本局 AI 填充位
   aiThinking: boolean;
+  scores: Map<string, number>;     // 持久分数（跨手累积，可为负）
+  seatKeys: string[];              // 当前手牌 playerId → 分数键
+  handStartChips: Map<number, number>; // 本手起手筹码（结算用）
 }
 
 const AI_FILL_STYLES = ['tag', 'lag', 'station', 'nit', 'balanced'];
-const STACK = 2000;
+const INITIAL_SCORE = 10000; // 房间初始分数
+const CREDIT_STACK = 10000;  // 负分玩家信用上桌筹码
 
 function makeRoomId(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -67,6 +71,7 @@ export class RoomManager {
         const room: Room = {
           id: makeRoomId(), humans: [], hostSeat: 0,
           game: null, dealerIdx: 0, handNumber: 0, aiStyles: [], aiThinking: false,
+          scores: new Map(), seatKeys: [], handStartChips: new Map(),
         };
         this.rooms.set(room.id, room);
         this.joinRoom(ws, room, msg.name ?? '玩家');
@@ -100,6 +105,10 @@ export class RoomManager {
         const res = applyAction(g, human.playerId, msg.action ?? 'fold', msg.raiseTo);
         if (!res.ok) return this.send(ws, { type: 'error', message: res.reason });
         room.game = res.state;
+        if (res.handEnded) {
+          this.settleHand(room, res.state);
+          room.dealerIdx = (room.dealerIdx + 1) % res.state.players.length;
+        }
         this.broadcastState(room);
         this.maybeRunAI(room);
         break;
@@ -138,8 +147,15 @@ export class RoomManager {
       ...humans.map(h => ({ name: h.name, style: 'human', isHero: false, seatIdx: h.seatIdx })),
       ...room.aiStyles.map(k => ({ name: BOT_STYLES[k].name.split('·')[0], style: k, isHero: false, seatIdx: -1 })),
     ];
-    // 每个 client 视角 isHero 在 sanitize 时按 playerId 处理；这里统一 false
-    const players = seatDefs.map((s, i) => ({ id: i, name: s.name, style: s.style, chips: STACK, isHero: false }));
+    // 持久分数：跨手累积，可为负；负分玩家以信用筹码上桌
+    room.seatKeys = seatDefs.map((s, i) => (s.seatIdx >= 0 ? `h${s.seatIdx}` : `a${i - humans.length}`));
+    room.handStartChips.clear();
+    const players = seatDefs.map((s, i) => {
+      const carried = room.scores.get(room.seatKeys[i]) ?? INITIAL_SCORE;
+      const chips = carried > 0 ? carried : CREDIT_STACK;
+      room.handStartChips.set(i, chips);
+      return { id: i, name: s.name, style: s.style, chips, isHero: false };
+    });
     const g = newHand(players, room.dealerIdx % players.length, ++room.handNumber);
     // 记录 human 的 playerId
     humans.forEach((h, i) => { h.playerId = i; });
@@ -148,13 +164,24 @@ export class RoomManager {
     this.maybeRunAI(room);
   }
 
+  /** 本手结算：把筹码变动写回持久分数（可为负） */
+  private settleHand(room: Room, finalState: GameState) {
+    for (const p of finalState.players) {
+      const key = room.seatKeys[p.id];
+      const start = room.handStartChips.get(p.id) ?? p.chips;
+      const carried = room.scores.get(key) ?? INITIAL_SCORE;
+      room.scores.set(key, carried + (p.chips - start));
+    }
+  }
+
   /** 给每个成员发其视角的脱敏状态 */
   private broadcastState(room: Room) {
     if (!room.game) return;
     for (const h of room.humans) {
       if (!h.connected) continue;
       const view = sanitizeState(room.game, h.playerId);
-      this.send(h.ws, { type: 'state', state: view, yourPlayerId: h.playerId });
+      const scores = room.game.players.map(p => room.scores.get(room.seatKeys[p.id]) ?? INITIAL_SCORE);
+      this.send(h.ws, { type: 'state', state: view, yourPlayerId: h.playerId, scores });
     }
   }
 
@@ -187,14 +214,16 @@ export class RoomManager {
       }
       if (res.ok) {
         room.game = res.state;
-        this.broadcastState(room);
         if (res.handEnded) {
-          room.dealerIdx = (room.dealerIdx + 1) % room.game.players.length;
-        } else {
+          this.settleHand(room, res.state);
+          room.dealerIdx = (room.dealerIdx + 1) % res.state.players.length;
+        }
+        this.broadcastState(room);
+        if (!res.handEnded) {
           this.maybeRunAI(room);
         }
       }
-    }, 700 + Math.random() * 500);
+    }, 1100 + Math.random() * 700);
   }
 
   private handleClose(ws: WebSocket) {

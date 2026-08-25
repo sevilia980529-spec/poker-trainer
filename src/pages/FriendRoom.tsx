@@ -1,25 +1,30 @@
-// 好友房：创建/加入房间 + 联机牌桌
+// 好友房：创建/加入房间 + 联机牌桌（布局与主训练场一致：椭圆桌 + 底部操作区）
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import type { GameState, ActionType } from '../engine/game';
 import { legalActions, STREET_NAME } from '../engine/game';
+import { cardToString } from '../engine/cards';
 import { loadProfile, saveProfile } from '../store/points';
 import { PlayingCard } from '../components/PlayingCard';
+import { Chip, ChipStack } from '../components/ChipStack';
+import { playDeal, playChips, playClick, playFold, playWin, playLose } from '../lib/sound';
 import { Button } from '../components/ui/button';
 import { Slider } from '../components/ui/slider';
 import { Badge } from '../components/ui/badge';
+import { ArrowLeft } from 'lucide-react';
+import { cn } from '../lib/utils';
 
 type Phase = 'connect' | 'lobby' | 'game';
 
 interface LobbyPlayer { name: string; seatIdx: number; connected: boolean }
 
+// 对手座位（相对牌桌容器），hero 固定在桌面下方
 const SEAT_POS = [
-  'bottom-2 left-1/2 -translate-x-1/2',
-  'bottom-6 left-2',
-  'top-1/2 -translate-y-1/2 left-2',
-  'top-2 left-1/3 -translate-x-1/2',
-  'top-2 right-1/3 translate-x-1/2',
-  'bottom-6 right-2',
+  'left-[6%] bottom-[-12%]',
+  'left-[-4%] top-[8%]',
+  'left-1/2 -translate-x-1/2 top-[-18%]',
+  'right-[-4%] top-[8%]',
+  'right-[6%] bottom-[-12%]',
 ];
 
 export default function FriendRoom() {
@@ -29,12 +34,14 @@ export default function FriendRoom() {
   const [error, setError] = useState('');
   const [lobby, setLobby] = useState<{ roomId: string; players: LobbyPlayer[]; hostSeat: number; youSeat: number } | null>(null);
   const [game, setGame] = useState<GameState | null>(null);
+  const [scores, setScores] = useState<number[]>([]);
   const [youId, setYouId] = useState(-1);
   const [raiseAmt, setRaiseAmt] = useState(60);
   const [sessionDelta, setSessionDelta] = useState(0);
   const wsRef = useRef<WebSocket | null>(null);
   const startChipsRef = useRef<{ hand: number; chips: number } | null>(null);
   const settledHandRef = useRef(0);
+  const prevCommunityRef = useRef(0);
 
   // 建立连接
   useEffect(() => {
@@ -53,8 +60,13 @@ export default function FriendRoom() {
           break;
         case 'state': {
           const s = msg.state as GameState;
+          if (Array.isArray(msg.scores)) setScores(msg.scores);
           const me = s.players[msg.yourPlayerId];
-          // 积分互通：跟踪每手起始筹码，结束时结算进积分账户
+          // 新公共牌音效
+          const cc = s.community.length;
+          if (cc > prevCommunityRef.current) playDeal();
+          prevCommunityRef.current = cc;
+          // 积分互通 + 结算音效：跟踪每手起始筹码，结束时结算
           if (me) {
             if (s.street !== 'handOver') {
               if (startChipsRef.current?.hand !== s.handNumber) {
@@ -63,6 +75,7 @@ export default function FriendRoom() {
             } else if (settledHandRef.current !== s.handNumber && startChipsRef.current?.hand === s.handNumber) {
               settledHandRef.current = s.handNumber;
               const delta = me.chips - startChipsRef.current.chips;
+              if (delta > 0) playWin(); else if (delta < 0) playLose();
               if (delta !== 0) {
                 const p = loadProfile();
                 saveProfile({ ...p, points: Math.max(0, p.points + delta) });
@@ -105,21 +118,32 @@ export default function FriendRoom() {
   const myTurn = game && game.actingIdx === youId && game.street !== 'handOver';
   const la = game && myTurn ? legalActions(game, youId) : null;
 
-  const act = (action: ActionType, raiseTo?: number) => send({ type: 'action', action, raiseTo });
+  const act = (action: ActionType, raiseTo?: number) => {
+    if (action === 'fold') playFold();
+    else if (action === 'check') playClick();
+    else playChips();
+    send({ type: 'action', action, raiseTo });
+  };
 
   useEffect(() => {
     if (la) setRaiseAmt(Math.min(Math.max(game!.bigBlind * 3, la.minRaiseTo), la.maxRaiseTo));
   }, [game?.actingIdx, game?.street]);
 
+  const pot = game?.players.reduce((s, p) => s + p.handBet, 0) ?? 0;
+  // 座位旋转：自己永远在桌面正下方
+  const seatRel = (pid: number) => game ? (pid - youId + game.players.length) % game.players.length : pid;
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      <header className="flex items-center gap-4 px-5 py-3 border-b border-slate-800 bg-slate-900/60">
-        <Link to="/" className="text-slate-400 hover:text-slate-200 text-sm">← 德州牌桌</Link>
-        <h1 className="text-lg font-bold">👥 好友房</h1>
+    <div className="min-h-dvh bg-[#071007] text-slate-100 flex flex-col">
+      <header className="flex items-center gap-3 px-4 py-2.5">
+        <Link to="/" className="text-slate-400 hover:text-slate-200 text-sm flex items-center gap-1">
+          <ArrowLeft className="w-4 h-4" />牌桌
+        </Link>
+        <h1 className="text-base font-bold">好友房</h1>
         {lobby && <Badge className="bg-purple-700">房间 {lobby.roomId}</Badge>}
         {sessionDelta !== 0 && (
-          <span className={`text-xs font-mono ${sessionDelta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-            本场 {sessionDelta > 0 ? '+' : ''}{sessionDelta}（已计入积分）
+          <span className={`text-xs font-mono ml-auto ${sessionDelta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+            本场 {sessionDelta > 0 ? '+' : ''}{sessionDelta}
           </span>
         )}
       </header>
@@ -134,7 +158,8 @@ export default function FriendRoom() {
           <div className="w-full max-w-sm rounded-xl bg-slate-900 border border-slate-700 p-6 space-y-4">
             <h2 className="font-bold text-lg">和好友一起训练</h2>
             <p className="text-xs text-slate-400 leading-relaxed">
-              同一台电脑开多个浏览器标签页，或让好友访问同一局域网地址，输入房间码即可同桌对练。空位由 AI 自动补齐到 6 人。
+              把这个网址发给好友，输入同一个房间码即可同桌对练。每人固定 {10000} 分起手，
+              分数跨手累积、可以为负（负分玩家每手信用上桌），空位由 AI 自动补齐到 6 人。
             </p>
             <div>
               <label className="text-xs text-slate-400">你的昵称</label>
@@ -186,76 +211,159 @@ export default function FriendRoom() {
 
       {/* 牌桌 */}
       {phase === 'game' && game && (
-        <main className="flex-1 flex flex-col items-center justify-center p-4 gap-4">
-          <div className="relative w-full max-w-3xl aspect-[16/10] rounded-[45%] bg-gradient-to-b from-emerald-800 to-emerald-950 border-8 border-amber-900/80 shadow-2xl">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2">
-              <div className="flex gap-1.5">
-                {game.community.map((c, i) => <PlayingCard key={i} card={c} />)}
-                {Array.from({ length: 5 - game.community.length }).map((_, i) => (
-                  <div key={`e${i}`} className="w-12 h-17 rounded-md border border-emerald-700/50" />
-                ))}
-              </div>
-              <div className="text-amber-300 font-bold text-sm bg-slate-900/70 px-3 py-1 rounded-full">
-                底池 {game.players.reduce((s, p) => s + p.handBet, 0)} · {STREET_NAME[game.street]}
-              </div>
-              {game.street === 'handOver' && (
-                <div className="text-center space-y-2">
-                  <p className="text-sm text-slate-200 bg-slate-900/80 rounded px-3 py-1">{game.handOverInfo}</p>
-                  {isHost
-                    ? <Button className="bg-amber-600 hover:bg-amber-500" onClick={() => send({ type: 'start' })}>下一手 ▶</Button>
-                    : <p className="text-xs text-slate-400">等待房主开始下一手…</p>}
-                </div>
-              )}
-            </div>
-            {game.players.map((p, i) => (
-              <div key={p.id}
-                className={`absolute ${SEAT_POS[i % SEAT_POS.length]} flex flex-col items-center gap-1 ${p.folded ? 'opacity-40' : ''}`}>
-                {p.id !== youId && (
-                  <div className="flex gap-1">
-                    {p.hole.length > 0
-                      ? p.hole.map((c, j) => <PlayingCard key={j} card={c} small />)
-                      : !p.folded && <><PlayingCard faceDown small /><PlayingCard faceDown small /></>}
-                  </div>
-                )}
-                <div className={`px-2.5 py-1 rounded-lg text-xs bg-slate-900/85 border flex flex-col items-center min-w-20
-                  ${game.actingIdx === i ? 'border-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.5)]' : 'border-slate-700'}`}>
-                  <span className="font-semibold">
-                    {game.dealerIdx === i && <span className="text-amber-400">D </span>}
-                    {p.name}{p.id === youId && <span className="text-sky-400">（你）</span>}
-                  </span>
-                  <span className="text-amber-300 font-mono">{p.chips}</span>
-                  {p.lastAction && <span className="text-sky-300">{p.lastAction}</span>}
-                </div>
-              </div>
-            ))}
-          </div>
+        <>
+          <main className="flex-1 relative flex items-center justify-center px-2 min-h-0">
+            <div className="relative w-[min(96vw,820px)] aspect-[2.1/1]">
+              {/* 桌面呢绒 */}
+              <div className="absolute inset-0 rounded-[50%] border-[10px] border-[#4a3325] shadow-2xl
+                bg-[radial-gradient(ellipse_at_center,#2e7d5b_0%,#1b5e43_55%,#12402e_100%)]
+                shadow-[inset_0_0_80px_rgba(0,0,0,0.45)]" />
 
-          {/* 我的手牌 + 操作 */}
-          <div className="flex flex-col items-center gap-3">
-            <div className="flex gap-2">
-              {youId >= 0 && game.players[youId]?.hole.map((c, i) => <PlayingCard key={i} card={c} />)}
-            </div>
-            {myTurn && la && !game.players[youId].folded ? (
-              <div className="flex items-center gap-2 flex-wrap justify-center bg-slate-900/70 rounded-xl px-4 py-3 border border-slate-700">
-                <Button variant="destructive" disabled={!la.canFold && !la.canCall} onClick={() => act('fold')}>弃牌</Button>
-                {la.canCheck && <Button variant="secondary" onClick={() => act('check')}>过牌</Button>}
-                {la.canCall && <Button className="bg-blue-600 hover:bg-blue-500" onClick={() => act('call')}>跟注 {la.callAmount}</Button>}
-                {la.canRaise && (
-                  <div className="flex items-center gap-2">
-                    <Slider className="w-40" min={la.minRaiseTo} max={la.maxRaiseTo} step={10}
-                      value={[raiseAmt]} onValueChange={v => setRaiseAmt(v[0])} />
-                    <Button className="bg-emerald-600 hover:bg-emerald-500"
-                      onClick={() => act(raiseAmt >= la.maxRaiseTo ? 'allin' : game.currentBet > 0 ? 'raise' : 'bet', raiseAmt)}>
-                      {raiseAmt >= la.maxRaiseTo ? `全下 ${raiseAmt}` : `${game.currentBet > 0 ? '加注' : '下注'} ${raiseAmt}`}
-                    </Button>
+              {/* 中央：底池 + 公共牌 */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1.5">
+                {pot > 0 && game.street !== 'handOver' && <ChipStack amount={pot} size={22} />}
+                <div key={pot} className="text-amber-200 font-bold text-xs sm:text-sm bg-black/50 px-3 py-0.5 rounded-full anim-pot">
+                  底池 {pot} · {STREET_NAME[game.street]}
+                </div>
+                <div className="flex gap-1 sm:gap-1.5">
+                  {game.community.map((c, i) => (
+                    <span key={cardToString(c)} className="anim-flip" style={{ animationDelay: `${(i % 3) * 90}ms` }}>
+                      <PlayingCard card={c} />
+                    </span>
+                  ))}
+                  {Array.from({ length: 5 - game.community.length }).map((_, i) => (
+                    <div key={`e${i}`} className="w-12 h-17 rounded-md border-2 border-white/10" />
+                  ))}
+                </div>
+                {game.street === 'handOver' && (
+                  <div className="flex flex-col items-center gap-1.5 mt-1">
+                    <p className="text-xs text-slate-200 bg-black/60 rounded-full px-3 py-1 max-w-72 text-center">{game.handOverInfo}</p>
+                    {isHost
+                      ? <Button size="sm" className="bg-amber-600 hover:bg-amber-500" onClick={() => send({ type: 'start' })}>下一手 ▶</Button>
+                      : <p className="text-[11px] text-slate-400">等待房主开始下一手…</p>}
                   </div>
                 )}
+              </div>
+
+              {/* 对手座位（旋转视角：自己恒在下方） */}
+              {game.players.filter(p => p.id !== youId).map(p => {
+                const rel = seatRel(p.id);
+                const posClass = SEAT_POS[(rel - 1 + 6) % 6] ?? SEAT_POS[0];
+                const revealed = p.hole.length > 0;
+                const score = scores[p.id];
+                return (
+                  <div key={p.id} className={cn('absolute flex flex-col items-center gap-1', posClass, p.folded && 'opacity-40')}>
+                    <div className="flex gap-1">
+                      {revealed
+                        ? p.hole.map((c, j) => (
+                          <span key={`${game.handNumber}-${p.id}-${j}-r`} className="anim-flip" style={{ animationDelay: `${j * 120}ms` }}>
+                            <PlayingCard card={c} small />
+                          </span>
+                        ))
+                        : !p.folded && (
+                          <>
+                            <span key={`${game.handNumber}-${p.id}-a`} className="anim-deal"><PlayingCard faceDown small /></span>
+                            <span key={`${game.handNumber}-${p.id}-b`} className="anim-deal" style={{ animationDelay: '90ms' }}><PlayingCard faceDown small /></span>
+                          </>
+                        )}
+                    </div>
+                    <div className={cn('flex items-center gap-1.5 rounded-full bg-black/70 pl-1 pr-2.5 py-1 border',
+                      game.actingIdx === p.id && game.street !== 'handOver' ? 'border-amber-400 shadow-[0_0_14px_rgba(251,191,36,0.6)]' : 'border-slate-700',
+                      game.street === 'handOver' && game.winners?.some(w => w.playerId === p.id) && 'anim-winner border-amber-300')}>
+                      <span className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-xs relative font-bold">
+                        {p.name.slice(0, 1)}
+                        {game.dealerIdx === p.id && (
+                          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 text-[8px] text-black font-bold flex items-center justify-center">D</span>
+                        )}
+                      </span>
+                      <div className="leading-tight">
+                        <div className="text-[11px] font-semibold whitespace-nowrap">{p.name}</div>
+                        <div className="text-[10px] font-mono">
+                          <span className="text-amber-300">{p.chips}</span>
+                          {score !== undefined && (
+                            <span className={cn('ml-1', score < 0 ? 'text-red-400' : 'text-slate-400')}>
+                              / {score}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {game.actingIdx === p.id && game.street !== 'handOver' && (
+                      <div className="flex gap-1 py-0.5">
+                        {[0, 1, 2].map(d => (
+                          <span key={d} className="think-dot w-1 h-1 rounded-full bg-amber-300"
+                            style={{ animationDelay: `${d * 0.15}s` }} />
+                        ))}
+                      </div>
+                    )}
+                    {p.streetBet > 0 && (
+                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 translate-y-full">
+                        <span key={p.streetBet} className="anim-chip inline-flex items-center gap-1 bg-black/70 rounded-full pl-0.5 pr-1.5 py-0.5">
+                          <Chip size={15} />
+                          <span className="text-[10px] font-mono text-amber-300 font-bold">{p.streetBet}</span>
+                        </span>
+                      </div>
+                    )}
+                    {p.lastAction && (
+                      <div key={`${p.id}-${p.lastAction}-${game.actingIdx}`}
+                        className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] bg-sky-600/90 rounded-full px-2 py-0.5 whitespace-nowrap anim-pop">
+                        {p.lastAction}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </main>
+
+          {/* 我的手牌 + 操作区 */}
+          <footer className="relative z-30 pb-3 pt-1 flex flex-col items-center gap-2">
+            <div className="flex gap-2">
+              {youId >= 0 && game.players[youId]?.hole.map((c, i) => (
+                <span key={`${game.handNumber}-me-${cardToString(c)}`} className="anim-deal" style={{ animationDelay: `${i * 130}ms` }}>
+                  <PlayingCard card={c} />
+                </span>
+              ))}
+            </div>
+            {scores[youId] !== undefined && (
+              <span className={cn('text-[11px] font-mono', scores[youId] < 0 ? 'text-red-400' : 'text-slate-400')}>
+                我的分数 {scores[youId]}{scores[youId] <= 0 && '（信用上桌）'}
+              </span>
+            )}
+            {myTurn && la && !game.players[youId].folded ? (
+              <div className="w-full max-w-lg flex flex-col items-center gap-2">
+                {la.canRaise && (
+                  <div className="flex items-center gap-3 w-full px-4">
+                    <Slider className="flex-1" min={la.minRaiseTo} max={la.maxRaiseTo} step={10}
+                      value={[raiseAmt]} onValueChange={v => setRaiseAmt(v[0])} />
+                    <span className="font-mono font-bold text-amber-300 w-16 text-right">{raiseAmt}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 justify-center flex-wrap">
+                  {(la.canFold || la.canCall) && (
+                    <Button className="rounded-full h-12 px-6 bg-red-700 hover:bg-red-600 text-base" onClick={() => act('fold')}>弃牌</Button>
+                  )}
+                  {la.canCheck && (
+                    <Button className="rounded-full h-12 px-6 bg-slate-600 hover:bg-slate-500 text-base" onClick={() => act('check')}>过牌</Button>
+                  )}
+                  {la.canCall && (
+                    <Button className="rounded-full h-12 px-6 bg-blue-600 hover:bg-blue-500 text-base" onClick={() => act('call')}>
+                      跟注 {la.callAmount}
+                    </Button>
+                  )}
+                  {la.canRaise && (
+                    <Button className="rounded-full h-12 px-6 bg-emerald-600 hover:bg-emerald-500 text-base"
+                      onClick={() => act(raiseAmt >= la.maxRaiseTo ? 'allin' : game.currentBet > 0 ? 'raise' : 'bet', raiseAmt)}>
+                      {raiseAmt >= la.maxRaiseTo ? `全下 ${raiseAmt}` : `${game.currentBet > 0 ? '加注到' : '下注'} ${raiseAmt}`}
+                    </Button>
+                  )}
+                </div>
               </div>
             ) : (
-              game.street !== 'handOver' && <p className="text-xs text-slate-500">等待其他玩家行动…</p>
+              game.street !== 'handOver' && <p className="text-[11px] text-slate-500 h-6">等待其他玩家行动…</p>
             )}
-          </div>
-        </main>
+          </footer>
+        </>
       )}
     </div>
   );

@@ -28,7 +28,7 @@ import {
 } from '../components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { cn } from '../lib/utils';
-import { Menu, GraduationCap, Volume2, VolumeX, Coins, Target, Club, Users, BookOpen, Spade, Trophy } from 'lucide-react';
+import { Menu, GraduationCap, Volume2, VolumeX, Coins, Target, Club, Users, BookOpen, Spade, Trophy, Settings } from 'lucide-react';
 
 const STYLE_KEYS = ['tag', 'lag', 'station', 'nit', 'balanced'] as const;
 
@@ -55,6 +55,9 @@ const SEAT_PCT = [
   { x: 90, y: 102 },   // 右下
 ];
 
+// 盲注档位（小盲/大盲 = 最低下注）
+const BLIND_OPTIONS: [number, number][] = [[10, 20], [25, 50], [50, 100], [100, 200]];
+
 export default function PokerTrainer() {
   const [profile, setProfile] = useState<PlayerProfile>(loadProfile);
   const [game, setGame] = useState<GameState | null>(null);
@@ -69,6 +72,15 @@ export default function PokerTrainer() {
   const [reviews, setReviews] = useState(loadReviews);
   const [showRules, setShowRules] = useState(false);
   const [soundOn, setSoundOn] = useState(!isMuted());
+  const [blinds, setBlinds] = useState<[number, number]>(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem('poker-blinds') ?? '[10,20]') as unknown;
+      if (Array.isArray(v) && v.length === 2 && typeof v[0] === 'number' && typeof v[1] === 'number') {
+        return [v[0], v[1]];
+      }
+      return [10, 20];
+    } catch { return [10, 20]; }
+  });
   const heroStackRef = useRef(BUY_IN);
   const aiStacksRef = useRef<number[]>(STYLE_KEYS.map(() => BUY_IN));
   const startStackRef = useRef(BUY_IN);
@@ -85,7 +97,7 @@ export default function PokerTrainer() {
         chips: aiStacksRef.current[i],
       })),
     ];
-    const g = newHand(players, nextDealer, handNumber + 1);
+    const g = newHand(players, nextDealer, handNumber + 1, blinds[0], blinds[1]);
     startStackRef.current = players[0].chips;
     heroPosRef.current = heroPositionName(g, 0);
     setHandNumber(h => h + 1);
@@ -94,7 +106,7 @@ export default function PokerTrainer() {
     setShowReview(false);
     setShowRaise(false);
     setGame(g);
-  }, [handNumber, profile.points]);
+  }, [handNumber, profile.points, blinds]);
 
   // AI 行动循环
   useEffect(() => {
@@ -270,6 +282,34 @@ export default function PokerTrainer() {
           </button>
           <Popover>
             <PopoverTrigger asChild>
+              <button title="设置"
+                className="w-9 h-9 rounded-full bg-slate-900/80 border border-slate-700 flex items-center justify-center text-slate-300">
+                <Settings className="w-[18px] h-[18px]" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="bg-slate-900 border-slate-700 text-slate-100 w-56 text-sm">
+              <p className="font-bold mb-2">牌桌设置</p>
+              <p className="text-xs text-slate-400 mb-1.5">盲注（最低下注）</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {BLIND_OPTIONS.map(([sb, bb]) => (
+                  <button key={bb}
+                    onClick={() => {
+                      setBlinds([sb, bb]);
+                      try { localStorage.setItem('poker-blinds', JSON.stringify([sb, bb])); } catch { /* ignore */ }
+                    }}
+                    className={cn('rounded-lg border px-2 py-1.5 text-xs font-mono transition',
+                      blinds[1] === bb
+                        ? 'border-amber-500 bg-amber-950/60 text-amber-300'
+                        : 'border-slate-700 bg-slate-800/60 text-slate-300 hover:border-slate-500')}>
+                    {sb} / {bb}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-500 mt-2">从下一手牌开始生效</p>
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
               <button className="rounded-full bg-slate-900/80 border border-amber-700 px-3 py-1.5 text-sm font-bold text-amber-300 flex items-center gap-1.5">
                 <Coins className="w-4 h-4" />{profile.points.toLocaleString()}
               </button>
@@ -316,7 +356,7 @@ export default function PokerTrainer() {
             <div className="absolute inset-0 flex items-center justify-center">
               <Button size="lg" className="bg-amber-600 hover:bg-amber-500 text-lg px-10 h-14 rounded-full shadow-xl"
                 onClick={() => startHand(dealerIdx)}>
-                开始训练<span className="text-xs opacity-80 ml-2">盲注 10/20</span>
+                开始训练<span className="text-xs opacity-80 ml-2">盲注 {blinds[0]}/{blinds[1]}</span>
               </Button>
             </div>
           ) : (
