@@ -1,9 +1,10 @@
 // 专项训练页面：情景刷题
 import { useCallback, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { genDrill, DRILL_CATEGORY_INFO, type Drill, type DrillCategory } from '../ai/drills';
 import { loadDrillStats, recordAnswer, DRILL_REWARD, type DrillStats } from '../store/drillStats';
 import { loadProfile, saveProfile } from '../store/points';
+import { useUserStore } from '../store/userStore';
 import { PlayingCard } from '../components/PlayingCard';
 import { RulesGuideDialog } from '../components/RulesGuide';
 import { Button } from '../components/ui/button';
@@ -13,8 +14,13 @@ import { cn } from '../lib/utils';
 const CATEGORIES = Object.keys(DRILL_CATEGORY_INFO) as DrillCategory[];
 
 export default function Drills() {
-  const [category, setCategory] = useState<DrillCategory>('preflop');
-  const [drill, setDrill] = useState<Drill>(() => genDrill('preflop'));
+  const [searchParams] = useSearchParams();
+  const initCat = (() => {
+    const c = searchParams.get('cat');
+    return c && c in DRILL_CATEGORY_INFO ? (c as DrillCategory) : 'preflop';
+  })();
+  const [category, setCategory] = useState<DrillCategory>(initCat);
+  const [drill, setDrill] = useState<Drill>(() => genDrill(initCat));
   const [picked, setPicked] = useState<string | null>(null);
   const [stats, setStats] = useState<DrillStats>(loadDrillStats);
   const [showRules, setShowRules] = useState(false);
@@ -29,6 +35,7 @@ export default function Drills() {
     setPicked(value);
     const isCorrect = value === drill.correct;
     setStats(recordAnswer(loadDrillStats(), drill.category, isCorrect));
+    useUserStore.getState().addXP(isCorrect ? 5 : 2);
     if (isCorrect) {
       const p = loadProfile();
       saveProfile({ ...p, points: p.points + DRILL_REWARD });
@@ -43,8 +50,8 @@ export default function Drills() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
       <header className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-800 bg-slate-900/60 flex-wrap safe-top">
-        <Link to="/" className="text-slate-400 hover:text-slate-200 text-sm">← 牌桌</Link>
-        <Link to="/blackjack" className="text-slate-400 hover:text-slate-200 text-sm">♣ 21点</Link>
+        <Link to="/training" className="text-slate-400 hover:text-slate-200 text-sm">← 训练中心</Link>
+        <Link to="/" className="text-slate-400 hover:text-slate-200 text-sm">🏠 首页</Link>
         <h1 className="text-lg font-bold">🎯 专项训练</h1>
         <button onClick={() => setShowRules(true)} className="text-slate-400 hover:text-slate-200 text-sm">📖 规则术语</button>
         <div className="text-xs text-slate-400 flex gap-3 ml-auto">

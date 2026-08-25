@@ -15,6 +15,8 @@ import {
 import { PlayingCard } from '../components/PlayingCard';
 import { Chip, ChipStack } from '../components/ChipStack';
 import { playDeal, playChips, playClick, playFold, playWin, playLose, playShuffle, playPotSweep, isMuted, setMuted } from '../lib/sound';
+import { loadTableConfig, DIFFICULTY_STYLES, BLIND_OPTIONS } from '../lib/tableConfig';
+import { useUserStore } from '../store/userStore';
 import { CoachPanel } from '../components/CoachPanel';
 import { ReviewList } from '../components/ReviewList';
 import { RulesGuideDialog } from '../components/RulesGuide';
@@ -28,9 +30,7 @@ import {
 } from '../components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { cn } from '../lib/utils';
-import { Menu, GraduationCap, Volume2, VolumeX, Coins, Target, Club, Users, BookOpen, Spade, Trophy, Settings } from 'lucide-react';
-
-const STYLE_KEYS = ['tag', 'lag', 'station', 'nit', 'balanced'] as const;
+import { Menu, GraduationCap, Volume2, VolumeX, Coins, Target, Club, Users, BookOpen, Spade, Trophy, Settings, Home as HomeIcon } from 'lucide-react';
 
 // 椭圆桌 5 个 AI 座位（hero 固定在桌面下方）
 const AI_SEAT_POS = [
@@ -45,9 +45,9 @@ const STYLE_EMOJI: Record<string, string> = {
   tag: '🦊', lag: '🔥', station: '🐷', nit: '🪨', balanced: '⚖️',
 };
 
-// 各座位中心相对牌桌容器的百分比坐标（用于筹码飞行动画），索引 = 玩家 id
-const SEAT_PCT = [
-  { x: 50, y: 108 },   // hero（桌面下方）
+// 各座位中心相对牌桌容器的百分比坐标（用于筹码飞行动画）
+const SEAT_PCT_HERO = { x: 50, y: 108 };
+const SEAT_PCT_AI = [
   { x: 10, y: 102 },   // 左下
   { x: 1, y: 18 },     // 左上
   { x: 50, y: -8 },    // 正上
@@ -55,11 +55,19 @@ const SEAT_PCT = [
   { x: 90, y: 102 },   // 右下
 ];
 
-// 盲注档位（小盲/大盲 = 最低下注）
-const BLIND_OPTIONS: [number, number][] = [[10, 20], [25, 50], [50, 100], [100, 200]];
+// AI 数量 → 使用哪些座位槽位（AI_SEAT_POS / SEAT_PCT_AI 的下标）
+const SEAT_LAYOUTS: Record<number, number[]> = {
+  1: [2],
+  3: [1, 2, 3],
+  5: [0, 1, 2, 3, 4],
+};
 
 export default function PokerTrainer() {
   const [profile, setProfile] = useState<PlayerProfile>(loadProfile);
+  const [tableConfig] = useState(loadTableConfig);
+  const botStyles = DIFFICULTY_STYLES[tableConfig.difficulty].slice(0, tableConfig.playerCount - 1);
+  const botCount = botStyles.length;
+  const seatSlots = SEAT_LAYOUTS[botCount] ?? SEAT_LAYOUTS[5];
   const [game, setGame] = useState<GameState | null>(null);
   const [dealerIdx, setDealerIdx] = useState(0);
   const [handNumber, setHandNumber] = useState(0);
@@ -82,17 +90,20 @@ export default function PokerTrainer() {
     } catch { return [10, 20]; }
   });
   const heroStackRef = useRef(BUY_IN);
-  const aiStacksRef = useRef<number[]>(STYLE_KEYS.map(() => BUY_IN));
+  const aiStacksRef = useRef<number[]>([]);
   const startStackRef = useRef(BUY_IN);
   const heroPosRef = useRef('');
 
   const startHand = useCallback((nextDealer: number) => {
     playShuffle();
-    aiStacksRef.current = aiStacksRef.current.map(c => (c <= 0 ? BUY_IN : c));
+    aiStacksRef.current = botStyles.map((_, i) => {
+      const c = aiStacksRef.current[i];
+      return c == null || c <= 0 ? BUY_IN : c;
+    });
     if (heroStackRef.current <= 0) heroStackRef.current = Math.min(BUY_IN, profile.points);
     const players = [
       { id: 0, name: '你', style: 'hero', isHero: true, chips: heroStackRef.current },
-      ...STYLE_KEYS.map((k, i) => ({
+      ...botStyles.map((k, i) => ({
         id: i + 1, name: BOT_STYLES[k].name.split('·')[0], style: k, isHero: false,
         chips: aiStacksRef.current[i],
       })),
@@ -149,7 +160,8 @@ export default function PokerTrainer() {
   useEffect(() => {
     if (!game || game.street !== 'handOver' || !game.winners?.length) return;
     const pot = game.winners.reduce((s, w) => s + w.amount, 0);
-    const target = SEAT_PCT[game.winners[0].playerId] ?? SEAT_PCT[0];
+    const wId = game.winners[0].playerId;
+    const target = wId === 0 ? SEAT_PCT_HERO : (SEAT_PCT_AI[seatSlots[wId - 1]] ?? SEAT_PCT_AI[2]);
     if (game.winners[0].playerId !== 0) playPotSweep();
     setPotFly({ x: 50, y: 42, amount: pot });
     const raf = requestAnimationFrame(() => requestAnimationFrame(() =>
@@ -162,10 +174,12 @@ export default function PokerTrainer() {
     const hero = finalState.players[0];
     const delta = hero.chips - startStackRef.current;
     if (delta > 0) playWin(); else if (delta < 0) playLose();
+    const heroWon = finalState.winners?.some(w => w.playerId === 0) ?? false;
+    useUserStore.getState().addXP(heroWon ? 30 : 10);
     aiStacksRef.current = finalState.players.slice(1).map(p => p.chips);
     heroStackRef.current = hero.chips;
     setProfile(prev => {
-      const won = finalState.winners?.some(w => w.playerId === 0) ?? false;
+      const won = heroWon;
       const wonAmount = finalState.winners?.find(w => w.playerId === 0)?.amount ?? 0;
       const next: PlayerProfile = {
         ...prev,
@@ -197,6 +211,7 @@ export default function PokerTrainer() {
       const actual: 'fold' | 'check' | 'call' | 'raise' =
         action === 'allin' || action === 'bet' ? 'raise' : action;
       const { grade, comment } = gradeAction(advice, actual, raiseTo);
+      if (grade === 'excellent') useUserStore.getState().addXP(5);
       setProfile(prev => {
         const next = {
           ...prev,
@@ -244,7 +259,7 @@ export default function PokerTrainer() {
     if (heroStackRef.current <= 0) heroStackRef.current = BUY_IN;
   };
 
-  const nextHand = () => { const d = (dealerIdx + 1) % 6; setDealerIdx(d); startHand(d); };
+  const nextHand = () => { const d = (dealerIdx + 1) % tableConfig.playerCount; setDealerIdx(d); startHand(d); };
 
   return (
     <div className="h-dvh flex flex-col bg-[#071007] text-slate-100 overflow-hidden select-none">
@@ -257,7 +272,8 @@ export default function PokerTrainer() {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="bg-slate-900 border-slate-700 text-slate-100">
-            <DropdownMenuItem asChild><Link to="/drills" className="flex items-center gap-2"><Target className="w-4 h-4 text-amber-400" />专项训练</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link to="/" className="flex items-center gap-2"><HomeIcon className="w-4 h-4 text-amber-400" />首页</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link to="/training" className="flex items-center gap-2"><Target className="w-4 h-4 text-amber-400" />训练中心</Link></DropdownMenuItem>
             <DropdownMenuItem asChild><Link to="/blackjack" className="flex items-center gap-2"><Club className="w-4 h-4 text-emerald-400" />21点训练室</Link></DropdownMenuItem>
             <DropdownMenuItem asChild><Link to="/room" className="flex items-center gap-2"><Users className="w-4 h-4 text-sky-400" />好友房</Link></DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setShowRules(true)}><BookOpen className="w-4 h-4 text-violet-400 mr-2" />规则与术语</DropdownMenuItem>
@@ -394,7 +410,7 @@ export default function PokerTrainer() {
 
               {/* AI 座位 */}
               {game.players.slice(1).map((p, i) => (
-                <div key={p.id} className={cn('absolute flex flex-col items-center gap-1', AI_SEAT_POS[i], p.folded && 'opacity-40')}>
+                <div key={p.id} className={cn('absolute flex flex-col items-center gap-1', AI_SEAT_POS[seatSlots[i] ?? 2], p.folded && 'opacity-40')}>
                   <div className="flex gap-1">
                     {p.hole.map((c, j) => {
                       const revealed = game.street === 'handOver' && !p.folded && !!game.winners;

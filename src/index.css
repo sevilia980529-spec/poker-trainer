@@ -71,6 +71,8 @@
   }
   body {
     @apply bg-background text-foreground;
+    background-color: #0A0A0A;
+    color: #F5EFE0;
   }
 }
 /* ===== 牌桌动效 ===== */
@@ -152,8 +154,14 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 }
 
 @layer components {
-  /* 玻璃拟态卡片 */
+  /* 玻璃拟态卡片（PokerMind 规范：墨黑半透明 + 20px 模糊 + 饱和增强 + 金边） */
   .glass {
-    @apply bg-black/60 backdrop-blur-md border border-white/5;
+    background: rgba(26, 26, 26, 0.6);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(212, 168, 87, 0.15);
   }
+
+  /* 等宽数字 */
+  .num { font-variant-numeric: tabular-nums; }
 }
