@@ -13,6 +13,7 @@ import {
   BUY_IN, DAILY_BONUS, type PlayerProfile,
 } from '../store/points';
 import { PlayingCard } from '../components/PlayingCard';
+import { playDeal, playChips, playClick, playFold, playWin, playLose, isMuted, setMuted } from '../lib/sound';
 import { CoachPanel } from '../components/CoachPanel';
 import { ReviewList } from '../components/ReviewList';
 import { RulesGuideDialog } from '../components/RulesGuide';
@@ -55,12 +56,14 @@ export default function PokerTrainer() {
   const [handResult, setHandResult] = useState<{ delta: number; info: string } | null>(null);
   const [reviews, setReviews] = useState(loadReviews);
   const [showRules, setShowRules] = useState(false);
+  const [soundOn, setSoundOn] = useState(!isMuted());
   const heroStackRef = useRef(BUY_IN);
   const aiStacksRef = useRef<number[]>(STYLE_KEYS.map(() => BUY_IN));
   const startStackRef = useRef(BUY_IN);
   const heroPosRef = useRef('');
 
   const startHand = useCallback((nextDealer: number) => {
+    playDeal();
     aiStacksRef.current = aiStacksRef.current.map(c => (c <= 0 ? BUY_IN : c));
     if (heroStackRef.current <= 0) heroStackRef.current = Math.min(BUY_IN, profile.points);
     const players = [
@@ -89,6 +92,9 @@ export default function PokerTrainer() {
     const timer = setTimeout(() => {
       const style: BotStyle = BOT_STYLES[game.players[idx].style] ?? BOT_STYLES.balanced;
       const d = botDecide(game, idx, style);
+      if (d.action === 'fold') playFold();
+      else if (d.action === 'check') playClick();
+      else playChips();
       const res = applyAction(game, idx, d.action, d.raiseTo);
       if (res.ok) {
         setGame(res.state);
@@ -98,9 +104,26 @@ export default function PokerTrainer() {
     return () => clearTimeout(timer);
   }, [game]);
 
+  // 新公共牌发出时播放发牌音
+  const prevCommunityRef = useRef(0);
+  useEffect(() => {
+    const n = game?.community.length ?? 0;
+    if (n > prevCommunityRef.current) playDeal();
+    prevCommunityRef.current = n;
+  }, [game?.community.length]);
+
+  const toggleSound = () => {
+    setSoundOn(prev => {
+      const next = !prev;
+      setMuted(!next);
+      return next;
+    });
+  };
+
   const onHandEnd = useCallback((finalState: GameState) => {
     const hero = finalState.players[0];
     const delta = hero.chips - startStackRef.current;
+    if (delta > 0) playWin(); else if (delta < 0) playLose();
     aiStacksRef.current = finalState.players.slice(1).map(p => p.chips);
     heroStackRef.current = hero.chips;
     setProfile(prev => {
@@ -154,6 +177,9 @@ export default function PokerTrainer() {
     }
     const res = applyAction(game, 0, action, raiseTo);
     if (res.ok) {
+      if (action === 'fold') playFold();
+      else if (action === 'check') playClick();
+      else playChips();
       setShowRaise(false);
       setGame(res.state);
       if (res.handEnded) onHandEnd(res.state);
@@ -193,18 +219,25 @@ export default function PokerTrainer() {
           <DropdownMenuContent className="bg-slate-900 border-slate-700 text-slate-100">
             <DropdownMenuItem asChild><Link to="/drills">🎯 专项训练</Link></DropdownMenuItem>
             <DropdownMenuItem asChild><Link to="/blackjack">♣ 21点训练室</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link to="/guandan">🃏 掼蛋训练场</Link></DropdownMenuItem>
             <DropdownMenuItem asChild><Link to="/room">👥 好友房</Link></DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setShowRules(true)}>📖 规则与术语</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setCoachOn(v => !v)}>
-              {coachOn ? '🔕 关闭实时教练' : '🎓 开启实时教练'}
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
         <div className="text-sm font-bold tracking-widest text-slate-300">♠ 德州训练场</div>
 
         <div className="flex items-center gap-2">
+          <button onClick={() => setCoachOn(v => !v)} title="实时教练"
+            className={cn('w-9 h-9 rounded-full border flex items-center justify-center text-base transition-all',
+              coachOn
+                ? 'bg-emerald-900/80 border-emerald-600 shadow-[0_0_10px_rgba(16,185,129,0.45)]'
+                : 'bg-slate-900/80 border-slate-700 opacity-50')}>
+            🎓
+          </button>
+          <button onClick={toggleSound} title="音效"
+            className="w-9 h-9 rounded-full bg-slate-900/80 border border-slate-700 flex items-center justify-center text-base">
+            {soundOn ? '🔊' : '🔇'}
+          </button>
           <Popover>
             <PopoverTrigger asChild>
               <button className="rounded-full bg-slate-900/80 border border-amber-700 px-3 py-1.5 text-sm font-bold text-amber-300">
@@ -252,11 +285,16 @@ export default function PokerTrainer() {
             <>
               {/* 中央：底池 + 公共牌 */}
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2">
-                <div className="text-amber-200 font-bold text-xs sm:text-sm bg-black/50 px-3 py-0.5 rounded-full">
+                <div key={game.players.reduce((s, p) => s + p.handBet, 0)}
+                  className="text-amber-200 font-bold text-xs sm:text-sm bg-black/50 px-3 py-0.5 rounded-full anim-pot">
                   底池 {game.players.reduce((s, p) => s + p.handBet, 0)} · {STREET_NAME[game.street]}
                 </div>
                 <div className="flex gap-1 sm:gap-1.5">
-                  {game.community.map((c, i) => <PlayingCard key={i} card={c} />)}
+                  {game.community.map((c, i) => (
+                    <span key={cardToString(c)} className="anim-flip" style={{ animationDelay: `${(i % 3) * 90}ms` }}>
+                      <PlayingCard card={c} />
+                    </span>
+                  ))}
                   {Array.from({ length: 5 - game.community.length }).map((_, i) => (
                     <div key={`e${i}`} className="w-12 h-17 rounded-md border-2 border-white/10" />
                   ))}
@@ -278,12 +316,15 @@ export default function PokerTrainer() {
                 <div key={p.id} className={cn('absolute flex flex-col items-center gap-1', AI_SEAT_POS[i], p.folded && 'opacity-40')}>
                   <div className="flex gap-1">
                     {p.hole.map((c, j) => (
-                      <PlayingCard key={j} card={c} small
-                        faceDown={game.street !== 'handOver' || p.folded || !game.winners} />
+                      <span key={`${handNumber}-${p.id}-${j}`} className="anim-deal" style={{ animationDelay: `${(i * 2 + j) * 90}ms` }}>
+                        <PlayingCard card={c} small
+                          faceDown={game.street !== 'handOver' || p.folded || !game.winners} />
+                      </span>
                     ))}
                   </div>
                   <div className={cn('flex items-center gap-1.5 rounded-full bg-black/70 pl-1 pr-2.5 py-1 border',
-                    game.actingIdx === p.id ? 'border-amber-400 shadow-[0_0_14px_rgba(251,191,36,0.6)]' : 'border-slate-700')}>
+                    game.actingIdx === p.id ? 'border-amber-400 shadow-[0_0_14px_rgba(251,191,36,0.6)]' : 'border-slate-700',
+                    game.street === 'handOver' && game.winners?.some(w => w.playerId === p.id) && 'anim-winner border-amber-300')}>
                     <span className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-sm relative">
                       {STYLE_EMOJI[p.style] ?? '🤖'}
                       {game.dealerIdx === p.id && (
@@ -297,11 +338,12 @@ export default function PokerTrainer() {
                   </div>
                   {p.streetBet > 0 && (
                     <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 translate-y-full">
-                      <span className="text-[10px] font-mono bg-amber-500/90 text-black font-bold rounded-full px-1.5 py-0.5">{p.streetBet}</span>
+                      <span key={p.streetBet} className="anim-chip inline-block text-[10px] font-mono bg-amber-500/90 text-black font-bold rounded-full px-1.5 py-0.5">{p.streetBet}</span>
                     </div>
                   )}
                   {p.lastAction && (
-                    <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] bg-sky-600/90 rounded-full px-2 py-0.5 whitespace-nowrap">
+                    <div key={`${p.id}-${p.lastAction}-${game.actingIdx}`}
+                      className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] bg-sky-600/90 rounded-full px-2 py-0.5 whitespace-nowrap anim-pop">
                       {p.lastAction}
                     </div>
                   )}
@@ -321,7 +363,11 @@ export default function PokerTrainer() {
               {heroPositionName(game, 0)}{game.dealerIdx === 0 && ' · 庄家'}
             </span>
             <div className="flex gap-2">
-              {game.players[0].hole.map((c, i) => <PlayingCard key={i} card={c} />)}
+              {game.players[0].hole.map((c, i) => (
+                <span key={`${handNumber}-${cardToString(c)}`} className="anim-deal" style={{ animationDelay: `${i * 130}ms` }}>
+                  <PlayingCard card={c} />
+                </span>
+              ))}
             </div>
           </div>
 
