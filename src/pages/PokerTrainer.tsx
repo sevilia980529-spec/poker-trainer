@@ -27,6 +27,7 @@ import {
 } from '../components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { cn } from '../lib/utils';
+import { Menu, GraduationCap, Volume2, VolumeX, Coins, Target, Club, Users, BookOpen, Spade, Trophy } from 'lucide-react';
 
 const STYLE_KEYS = ['tag', 'lag', 'station', 'nit', 'balanced'] as const;
 
@@ -214,38 +215,42 @@ export default function PokerTrainer() {
       <header className="relative z-30 flex items-center justify-between px-3 py-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="w-9 h-9 rounded-full bg-slate-900/80 border border-slate-700 flex items-center justify-center text-lg">☰</button>
+            <button className="w-9 h-9 rounded-full bg-slate-900/80 border border-slate-700 flex items-center justify-center text-slate-300">
+              <Menu className="w-[18px] h-[18px]" />
+            </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="bg-slate-900 border-slate-700 text-slate-100">
-            <DropdownMenuItem asChild><Link to="/drills">🎯 专项训练</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link to="/blackjack">♣ 21点训练室</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link to="/room">👥 好友房</Link></DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setShowRules(true)}>📖 规则与术语</DropdownMenuItem>
+            <DropdownMenuItem asChild><Link to="/drills" className="flex items-center gap-2"><Target className="w-4 h-4 text-amber-400" />专项训练</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link to="/blackjack" className="flex items-center gap-2"><Club className="w-4 h-4 text-emerald-400" />21点训练室</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link to="/room" className="flex items-center gap-2"><Users className="w-4 h-4 text-sky-400" />好友房</Link></DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setShowRules(true)}><BookOpen className="w-4 h-4 text-violet-400 mr-2" />规则与术语</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <div className="text-sm font-bold tracking-widest text-slate-300">♠ 德州训练场</div>
+        <div className="flex items-center gap-1.5 text-sm font-bold tracking-widest text-slate-300">
+          <Spade className="w-4 h-4 text-emerald-400" />德州训练场
+        </div>
 
         <div className="flex items-center gap-2">
           <button onClick={() => setCoachOn(v => !v)} title="实时教练"
-            className={cn('w-9 h-9 rounded-full border flex items-center justify-center text-base transition-all',
+            className={cn('w-9 h-9 rounded-full border flex items-center justify-center transition-all',
               coachOn
-                ? 'bg-emerald-900/80 border-emerald-600 shadow-[0_0_10px_rgba(16,185,129,0.45)]'
-                : 'bg-slate-900/80 border-slate-700 opacity-50')}>
-            🎓
+                ? 'bg-emerald-900/80 border-emerald-600 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.45)]'
+                : 'bg-slate-900/80 border-slate-700 text-slate-500')}>
+            <GraduationCap className="w-[18px] h-[18px]" />
           </button>
           <button onClick={toggleSound} title="音效"
-            className="w-9 h-9 rounded-full bg-slate-900/80 border border-slate-700 flex items-center justify-center text-base">
-            {soundOn ? '🔊' : '🔇'}
+            className="w-9 h-9 rounded-full bg-slate-900/80 border border-slate-700 flex items-center justify-center text-slate-300">
+            {soundOn ? <Volume2 className="w-[18px] h-[18px]" /> : <VolumeX className="w-[18px] h-[18px] text-slate-500" />}
           </button>
           <Popover>
             <PopoverTrigger asChild>
-              <button className="rounded-full bg-slate-900/80 border border-amber-700 px-3 py-1.5 text-sm font-bold text-amber-300">
-                🫘 {profile.points.toLocaleString()}
+              <button className="rounded-full bg-slate-900/80 border border-amber-700 px-3 py-1.5 text-sm font-bold text-amber-300 flex items-center gap-1.5">
+                <Coins className="w-4 h-4" />{profile.points.toLocaleString()}
               </button>
             </PopoverTrigger>
             <PopoverContent className="bg-slate-900 border-slate-700 text-slate-100 w-64 text-sm">
-              <p className="font-bold mb-2">📊 我的战绩</p>
+              <p className="font-bold mb-2 flex items-center gap-1.5"><Trophy className="w-4 h-4 text-amber-400" />我的战绩</p>
               <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-300">
                 <span className="text-slate-500">积分</span><span className="text-amber-300 font-mono">{profile.points.toLocaleString()}</span>
                 <span className="text-slate-500">手数</span><span>{profile.handsPlayed}</span>
@@ -376,7 +381,7 @@ export default function PokerTrainer() {
             <Sheet>
               <SheetTrigger asChild>
                 <button className="flex items-center gap-2 bg-emerald-950/80 border border-emerald-700 rounded-full px-4 py-1.5 text-xs">
-                  <span>🎓</span>
+                  <GraduationCap className="w-4 h-4 text-emerald-300" />
                   <span className="font-bold text-emerald-300">
                     {advice.recommendation === 'raise' ? `建议加注${advice.raiseSize ? '到 ' + advice.raiseSize : ''}`
                       : advice.recommendation === 'fold' ? '建议弃牌'
