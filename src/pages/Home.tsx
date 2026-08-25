@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Header from '../components/common/Header';
 import Button from '../components/common/Button';
 import { ToastContainer, useToast } from '../components/common/Toast';
 import { useUserStore, useLevel } from '../store/userStore';
 import { loadProfile, saveProfile } from '../store/points';
+import { RulesGuideDialog } from '../components/RulesGuide';
 
 const CHECKIN_CHIPS = 500;
 
@@ -16,6 +17,7 @@ export default function Home() {
   const consecutive = useUserStore((s) => s.consecutiveLoginDays);
   const xp = useUserStore((s) => s.xp);
   const toast = useToast();
+  const [showRules, setShowRules] = useState(false);
 
   const profile = loadProfile();
   const winRate = profile.handsPlayed > 0
@@ -179,11 +181,11 @@ export default function Home() {
               <div className="text-sm font-medium">个人中心</div>
             </button>
             <button
-              onClick={() => navigate('/drills')}
+              onClick={() => setShowRules(true)}
               className="glass rounded-2xl p-4 text-center active:scale-95 transition-transform"
             >
-              <div className="text-2xl mb-1">📚</div>
-              <div className="text-sm font-medium">专项刷题</div>
+              <div className="text-2xl mb-1">📖</div>
+              <div className="text-sm font-medium">规则术语</div>
             </button>
             <button
               onClick={() => navigate('/training')}
@@ -199,6 +201,8 @@ export default function Home() {
           PokerMind · AI 德州陪练 · 让你成为更好的牌手
         </div>
       </main>
+
+      <RulesGuideDialog open={showRules} onOpenChange={setShowRules} />
     </div>
   );
 }
