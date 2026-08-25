@@ -1,4 +1,4 @@
-// 21点训练页面 v2：支持分牌 / 保险 / 双倍
+// 21点训练页面 v3：拟真牌桌（庄家/玩家头像、呢绒台面、筹码下注、动效音效）
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router';
 import {
@@ -8,15 +8,31 @@ import {
 import { basicStrategyFull, gradeBjActionFull, countInfo, INSURANCE_TEACHING } from '../games/blackjack/strategy';
 import { loadProfile, saveProfile } from '../store/points';
 import { PlayingCard } from '../components/PlayingCard';
+import { Chip, ChipStack } from '../components/ChipStack';
+import { playDeal, playChips, playClick, playWin, playLose } from '../lib/sound';
 import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
 import { Switch } from '../components/ui/switch';
+import { ArrowLeft } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 const BET_OPTIONS = [50, 100, 200, 500];
 const ACTION_LABEL: Record<string, string> = { hit: '要牌', stand: '停牌', double: '双倍', split: '分牌' };
 
 interface ActionLog { hand: number; action: string; correct: boolean; why: string }
+
+/** 拟人头像圆牌 */
+function Avatar({ label, tone }: { label: string; tone: 'dealer' | 'player' }) {
+  return (
+    <div className={cn(
+      'w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold border-2 shadow-lg',
+      tone === 'dealer'
+        ? 'bg-gradient-to-b from-slate-700 to-slate-950 border-amber-500/80 text-amber-200'
+        : 'bg-gradient-to-b from-emerald-700 to-emerald-950 border-emerald-400/80 text-emerald-100',
+    )}>
+      {label}
+    </div>
+  );
+}
 
 export default function Blackjack() {
   const [profile, setProfile] = useState(loadProfile);
@@ -27,6 +43,7 @@ export default function Blackjack() {
   const [log, setLog] = useState<ActionLog[]>([]);
   const [insuranceLog, setInsuranceLog] = useState<{ took: boolean; correct: boolean } | null>(null);
   const [sessionProfit, setSessionProfit] = useState(0);
+  const [roundSeq, setRoundSeq] = useState(0);
 
   const deduct = useCallback((amount: number) => {
     setProfile(prev => {
@@ -45,15 +62,21 @@ export default function Blackjack() {
       saveProfile(next);
       return next;
     });
-    setSessionProfit(p => p + totalPayout(s) + (s.insurancePayout ?? 0));
+    const net = totalPayout(s) + (s.insurancePayout ?? 0);
+    setSessionProfit(p => p + net);
+    if (net > 0) playWin(); else if (net < 0) playLose(); else playClick();
   }, []);
 
   const deal = useCallback(() => {
     if (profile.points < bet) return;
     deduct(bet);
+    playChips(2);
+    setTimeout(() => playDeal(), 150);
+    setTimeout(() => playDeal(), 400);
     const s = startRound(bet);
     setLog([]);
     setInsuranceLog(null);
+    setRoundSeq(r => r + 1);
     setGame(s);
     if (s.phase === 'settled') creditSettle(s);
   }, [bet, profile.points, deduct, creditSettle]);
@@ -62,7 +85,7 @@ export default function Blackjack() {
     if (!game || game.phase !== 'insurance') return;
     const half = Math.floor(game.hands[0].bet / 2);
     if (take && profile.points < half) return;
-    if (take) deduct(half);
+    if (take) { deduct(half); playChips(); } else playClick();
     // 保险教学：基本策略永远不买（除非真计数高）
     if (coachOn) {
       const ci = countInfo(game.seenCards, game.shoe.length);
@@ -81,12 +104,12 @@ export default function Blackjack() {
       if (profile.points < h.bet) return;
       deduct(h.bet);
     }
-    if (coachOn && action !== 'split') {
+    if (action === 'hit') playDeal();
+    else if (action === 'stand') playClick();
+    else playChips(4);
+    if (coachOn) {
       const { grade, advice } = gradeBjActionFull(h.cards, game.dealerHand[0], action, canSplit(game));
       setLog(prev => [...prev, { hand: game.activeHand, action: ACTION_LABEL[action], correct: grade === 'excellent', why: advice.why }]);
-    } else if (coachOn && action === 'split') {
-      const { grade, advice } = gradeBjActionFull(h.cards, game.dealerHand[0], action, canSplit(game));
-      setLog(prev => [...prev, { hand: game.activeHand, action: '分牌', correct: grade === 'excellent', why: advice.why }]);
     }
     const s = bjApply(game, action);
     setGame(s);
@@ -100,15 +123,20 @@ export default function Blackjack() {
   const ci = game ? countInfo(game.seenCards, game.shoe.length) : null;
   const dv = game ? handValue(game.dealerHand) : null;
   const canAffordBet = profile.points >= bet;
+  const settled = game?.phase === 'settled';
+  const netResult = game && settled ? totalPayout(game) + (game.insurancePayout ?? 0) : 0;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      <header className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-800 bg-slate-900/60 flex-wrap safe-top">
-        <Link to="/" className="text-slate-400 hover:text-slate-200 text-sm">← 牌桌</Link>
-        <Link to="/drills" className="text-slate-400 hover:text-slate-200 text-sm">🎯 刷题</Link>
-        <h1 className="text-base font-bold">♣ 21点训练室</h1>
-        <Badge className="bg-amber-600">{profile.points.toLocaleString()} 分</Badge>
-        <span className="text-xs text-slate-400">盈亏 {sessionProfit >= 0 ? '+' : ''}{sessionProfit}</span>
+    <div className="min-h-dvh bg-[#071007] text-slate-100 flex flex-col">
+      <header className="flex items-center gap-3 px-4 py-2.5 flex-wrap safe-top">
+        <Link to="/" className="text-slate-400 hover:text-slate-200 text-sm flex items-center gap-1">
+          <ArrowLeft className="w-4 h-4" />牌桌
+        </Link>
+        <Link to="/drills" className="text-slate-400 hover:text-slate-200 text-sm">专项训练</Link>
+        <h1 className="text-base font-bold">21点训练室</h1>
+        <span className={cn('text-xs font-mono', sessionProfit > 0 ? 'text-emerald-400' : sessionProfit < 0 ? 'text-red-400' : 'text-slate-500')}>
+          盈亏 {sessionProfit >= 0 ? '+' : ''}{sessionProfit}
+        </span>
         <div className="ml-auto flex items-center gap-3 text-xs text-slate-300">
           <label className="flex items-center gap-1.5">
             <Switch checked={coachOn} onCheckedChange={setCoachOn} /> 教练
@@ -119,114 +147,163 @@ export default function Blackjack() {
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center p-6 gap-5 max-w-3xl mx-auto w-full">
-        {/* 庄家 */}
-        <div className="flex flex-col items-center gap-2">
-          <div className="text-sm text-slate-400">
-            庄家 {game && (game.phase === 'settled') ? `· ${dv!.value} 点` : ''}
-          </div>
-          <div className="flex gap-2">
-            {game ? game.dealerHand.map((c, i) => (
-              <PlayingCard key={i} card={c} faceDown={i === 1 && game.phase !== 'settled'} />
-            )) : (<><PlayingCard faceDown /><PlayingCard faceDown /></>)}
-          </div>
-        </div>
+      <main className="flex-1 flex flex-col items-center p-3 gap-3 max-w-3xl mx-auto w-full">
+        {/* ===== 牌桌呢绒区 ===== */}
+        <div className="relative w-full rounded-[36px] border-[8px] border-[#4a3325] shadow-2xl overflow-hidden
+          bg-[radial-gradient(ellipse_at_center,#2e7d5b_0%,#1b5e43_55%,#12402e_100%)] px-4 py-5">
 
-        <div className="text-slate-700 text-xl">⋯</div>
-
-        {/* 玩家手牌（支持分牌多手） */}
-        <div className="flex gap-6 flex-wrap justify-center">
-          {game ? game.hands.map((h, i) => {
-            const v = handValue(h.cards);
-            const isActive = game.phase === 'player' && game.activeHand === i;
-            return (
-              <div key={i} className={cn('flex flex-col items-center gap-1.5 rounded-xl p-2 border',
-                isActive ? 'border-amber-400 bg-amber-950/20' : 'border-transparent')}>
-                <div className="flex gap-2">
-                  {h.cards.map((c, j) => <PlayingCard key={j} card={c} />)}
-                </div>
-                <div className="text-xs text-slate-400">
-                  {game.hands.length > 1 ? `第${i + 1}手 · ` : ''}{v.value} 点{v.soft ? '（软）' : ''} · 注 {h.bet}
-                  {h.result && game.phase === 'settled' && (
-                    <span className={cn('ml-1 font-bold',
-                      h.result === 'win' ? 'text-emerald-400' : h.result === 'push' ? 'text-slate-300' : 'text-red-400')}>
-                      {{ win: `+${h.payout}`, push: '平', lose: `${h.payout}`, bust: '爆' }[h.result]}
-                    </span>
-                  )}
-                </div>
+          {/* 庄家区 */}
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex items-center gap-2">
+              <Avatar label="庄" tone="dealer" />
+              <div className="leading-tight">
+                <p className="text-xs font-semibold text-slate-200">庄家</p>
+                <p className="text-[10px] text-slate-400 font-mono">
+                  {settled && dv ? `${dv.value} 点` : '17 点停牌'}
+                </p>
               </div>
-            );
-          }) : (
-            <div className="flex gap-2"><PlayingCard faceDown /><PlayingCard faceDown /></div>
+            </div>
+            <div className="flex gap-2 min-h-[68px]">
+              {game ? game.dealerHand.map((c, i) => {
+                const hidden = i === 1 && !settled;
+                return (
+                  <span key={`${roundSeq}-d${i}-${hidden}`} className={hidden ? 'anim-deal' : 'anim-flip'}
+                    style={{ animationDelay: `${i * 150}ms` }}>
+                    <PlayingCard card={c} faceDown={hidden} />
+                  </span>
+                );
+              }) : (
+                <>
+                  <PlayingCard faceDown />
+                  <PlayingCard faceDown />
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* 台面装饰文字 */}
+          <div className="text-center my-2 select-none">
+            <p className="text-[10px] tracking-[0.3em] text-emerald-200/30 font-bold">BLACKJACK PAYS 3 TO 2</p>
+            <p className="text-[9px] tracking-[0.2em] text-emerald-200/20 mt-0.5">INSURANCE PAYS 2 TO 1</p>
+          </div>
+
+          {/* 结果横幅 */}
+          {settled && game?.message && (
+            <div className={cn('anim-pop relative left-1/2 mx-auto w-fit -translate-x-1/2 text-sm font-bold px-4 py-1.5 rounded-full text-center mb-2',
+              netResult > 0 ? 'bg-emerald-900/80 text-emerald-300' :
+              netResult < 0 ? 'bg-red-900/80 text-red-300' : 'bg-slate-800/90 text-slate-300')}>
+              {game.message}
+            </div>
           )}
+
+          {/* 玩家区（支持分牌多手） */}
+          <div className="flex gap-4 flex-wrap justify-center">
+            {game ? game.hands.map((h, i) => {
+              const v = handValue(h.cards);
+              const isActive = game.phase === 'player' && game.activeHand === i;
+              return (
+                <div key={i} className={cn('flex flex-col items-center gap-1.5 rounded-2xl px-3 py-2 border transition-all',
+                  isActive ? 'border-amber-400 bg-amber-950/25 shadow-[0_0_16px_rgba(251,191,36,0.25)]' : 'border-white/5')}>
+                  <div className="flex gap-1.5">
+                    {h.cards.map((c, j) => (
+                      <span key={`${roundSeq}-${i}-${j}-${c.rank}${c.suit}`} className="anim-deal"
+                        style={{ animationDelay: `${(j + 1) * 130}ms` }}>
+                        <PlayingCard card={c} />
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-slate-300">
+                    <span className={cn('font-mono font-bold',
+                      v.value > 21 ? 'text-red-400' : v.value === 21 ? 'text-amber-300' : 'text-slate-200')}>
+                      {game.hands.length > 1 ? `第${i + 1}手 · ` : ''}{v.value} 点{v.soft ? '（软）' : ''}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-amber-300/90 font-mono">
+                      <Chip size={14} />{h.bet}
+                    </span>
+                    {h.result && settled && (
+                      <span className={cn('font-bold',
+                        h.result === 'win' ? 'text-emerald-400' : h.result === 'push' ? 'text-slate-300' : 'text-red-400')}>
+                        {{ win: `+${h.payout}`, push: '平局', lose: `${h.payout}`, bust: '爆牌' }[h.result]}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            }) : (
+              <div className="flex gap-2 opacity-60"><PlayingCard faceDown /><PlayingCard faceDown /></div>
+            )}
+          </div>
+
+          {/* 玩家头像 + 当前下注 */}
+          <div className="flex flex-col items-center gap-1 mt-3">
+            <Avatar label="我" tone="player" />
+            {game && !settled && totalBet(game) > 0 && (
+              <ChipStack amount={totalBet(game)} size={20} />
+            )}
+          </div>
         </div>
 
-        {/* 结果信息 */}
-        {game?.phase === 'settled' && game.message && (
-          <div className={`text-sm font-bold px-4 py-2 rounded-lg text-center ${
-            (totalPayout(game) + (game.insurancePayout ?? 0)) > 0 ? 'bg-emerald-900/60 text-emerald-300' :
-            (totalPayout(game) + (game.insurancePayout ?? 0)) < 0 ? 'bg-red-900/60 text-red-300' : 'bg-slate-800 text-slate-300'}`}>
-            {game.message}
-          </div>
-        )}
-
-        {/* 保险询问 */}
+        {/* ===== 保险询问 ===== */}
         {game?.phase === 'insurance' && (
-          <div className="flex flex-col items-center gap-2 bg-purple-950/40 border border-purple-800 rounded-xl px-4 py-3">
-            <p className="text-sm text-purple-200">庄家明牌是 A，要买保险吗？（保险费 {Math.floor(game.hands[0].bet / 2)}，庄家 Blackjack 赔 2:1）</p>
-            <div className="flex gap-2">
-              <Button className="bg-purple-600 hover:bg-purple-500" onClick={() => answerInsurance(true)}
+          <div className="anim-pop relative left-0 flex flex-col items-center gap-2 bg-purple-950/50 border border-purple-700 rounded-2xl px-5 py-3 w-full max-w-md">
+            <p className="text-sm text-purple-200 text-center">
+              庄家明牌是 A，要买保险吗？
+              <span className="font-mono text-purple-300 ml-1">保费 {Math.floor(game.hands[0].bet / 2)}</span>
+            </p>
+            <div className="flex gap-3">
+              <Button className="rounded-full bg-purple-600 hover:bg-purple-500 px-6" onClick={() => answerInsurance(true)}
                 disabled={profile.points < Math.floor(game.hands[0].bet / 2)}>买保险</Button>
-              <Button variant="secondary" onClick={() => answerInsurance(false)}>不买</Button>
+              <Button variant="secondary" className="rounded-full px-6" onClick={() => answerInsurance(false)}>不买</Button>
             </div>
-            {coachOn && <p className="text-[11px] text-slate-400 max-w-md">💡 {INSURANCE_TEACHING.why}</p>}
+            {coachOn && <p className="text-[11px] text-slate-400 max-w-md text-center">💡 {INSURANCE_TEACHING.why}</p>}
           </div>
         )}
         {insuranceLog && game?.phase !== 'insurance' && (
-          <p className={`text-xs ${insuranceLog.correct ? 'text-emerald-400' : 'text-amber-400'}`}>
+          <p className={cn('text-xs', insuranceLog.correct ? 'text-emerald-400' : 'text-amber-400')}>
             {insuranceLog.correct
               ? (insuranceLog.took ? '✅ 真计数够高，保险合理' : '✅ 不买保险是基本策略正解')
               : '⚠️ 真计数 <+3 时买保险是负期望，记住：基本策略永远不买保险'}
           </p>
         )}
 
-        {/* 操作区 */}
-        <div className="flex items-center gap-3 flex-wrap justify-center">
-          {!game || game.phase === 'settled' ? (
+        {/* ===== 操作区 ===== */}
+        <div className="flex flex-col items-center gap-3 w-full safe-bottom">
+          {!game || settled ? (
             <>
-              <div className="flex gap-1.5">
+              {/* 筹码选注 */}
+              <div className="flex items-end gap-3">
                 {BET_OPTIONS.map(b => (
-                  <button key={b} onClick={() => setBet(b)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-bold border ${
-                      bet === b ? 'bg-amber-600 border-amber-400' : 'bg-slate-800 border-slate-600'}`}>
-                    {b}
+                  <button key={b} onClick={() => { setBet(b); playClick(); }}
+                    className={cn('transition-all rounded-full',
+                      bet === b ? 'scale-110 ring-2 ring-amber-400 ring-offset-2 ring-offset-[#071007]' : 'opacity-70 hover:opacity-100')}>
+                    <Chip amount={b} size={44} />
                   </button>
                 ))}
               </div>
-              <Button size="lg" className="bg-amber-600 hover:bg-amber-500 px-8"
+              <Button size="lg" className="rounded-full bg-amber-600 hover:bg-amber-500 px-10 h-13 text-lg shadow-xl"
                 disabled={!canAffordBet} onClick={deal}>
-                {game ? '再来一局' : '发牌'}
+                {game ? '再来一局' : '下注发牌'}
               </Button>
               {!canAffordBet && <span className="text-red-400 text-xs">积分不足，请降低注码</span>}
             </>
           ) : game.phase === 'player' ? (
-            <>
-              <Button className="bg-sky-600 hover:bg-sky-500" onClick={() => act('hit')}>要牌</Button>
-              <Button variant="secondary" onClick={() => act('stand')}>停牌</Button>
+            <div className="flex items-center gap-2 justify-center flex-wrap">
+              <Button className="rounded-full h-12 px-7 bg-sky-600 hover:bg-sky-500 text-base" onClick={() => act('hit')}>要牌</Button>
+              <Button className="rounded-full h-12 px-7 bg-slate-600 hover:bg-slate-500 text-base" onClick={() => act('stand')}>停牌</Button>
               {legalBjActions(game, profile.points).includes('double') && (
-                <Button className="bg-emerald-600 hover:bg-emerald-500" onClick={() => act('double')}>双倍</Button>
+                <Button className="rounded-full h-12 px-6 bg-emerald-600 hover:bg-emerald-500 text-base" onClick={() => act('double')}>双倍</Button>
               )}
               {legalBjActions(game, profile.points).includes('split') && (
-                <Button className="bg-violet-600 hover:bg-violet-500" onClick={() => act('split')}>分牌</Button>
+                <Button className="rounded-full h-12 px-6 bg-violet-600 hover:bg-violet-500 text-base" onClick={() => act('split')}>分牌</Button>
               )}
-            </>
+            </div>
           ) : null}
         </div>
 
-        {/* 教练 + 算牌 + 决策记录 */}
-        <div className="w-full grid md:grid-cols-2 gap-3">
+        {/* ===== 教练 + 算牌 + 决策记录 ===== */}
+        <div className="w-full grid md:grid-cols-2 gap-3 pb-4">
           {advice && (
-            <div className="rounded-lg bg-slate-900 border border-emerald-800/60 p-3 text-sm">
+            <div className="rounded-xl bg-slate-900/80 border border-emerald-800/60 p-3 text-sm">
               <p className="font-semibold text-emerald-300 mb-1">🎓 基本策略建议：
                 <span className="text-white font-bold ml-1">{ACTION_LABEL[advice.action]}</span>
               </p>
@@ -234,7 +311,7 @@ export default function Blackjack() {
             </div>
           )}
           {showCount && ci && (
-            <div className="rounded-lg bg-slate-900 border border-purple-800/60 p-3 text-sm">
+            <div className="rounded-xl bg-slate-900/80 border border-purple-800/60 p-3 text-sm">
               <p className="font-semibold text-purple-300 mb-1">
                 🔢 Hi-Lo：累积 <span className="font-mono text-white">{ci.running > 0 ? '+' : ''}{ci.running}</span>
                 {' '}· 真计数 <span className="font-mono text-white">{ci.trueCount > 0 ? '+' : ''}{ci.trueCount}</span>
@@ -244,7 +321,7 @@ export default function Blackjack() {
             </div>
           )}
           {log.length > 0 && (
-            <div className="rounded-lg bg-slate-900 border border-slate-700 p-3 text-sm md:col-span-2">
+            <div className="rounded-xl bg-slate-900/80 border border-slate-700 p-3 text-sm md:col-span-2">
               <p className="font-semibold text-slate-300 mb-1">📒 本局决策</p>
               <div className="space-y-1">
                 {log.map((l, i) => (
@@ -260,7 +337,7 @@ export default function Blackjack() {
           )}
         </div>
 
-        <p className="text-[11px] text-slate-600 text-center">
+        <p className="text-[11px] text-slate-600 text-center pb-3">
           规则：4 副牌靴 · 庄家所有 17 停牌 · Blackjack 赔 1.5 倍 · 双倍 · 分牌（最多 4 手，分 A 各补一张）· 保险赔 2:1
         </p>
       </main>
