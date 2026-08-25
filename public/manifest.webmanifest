@@ -1,0 +1,16 @@
+{
+  "name": "牌技 AI 训练场",
+  "short_name": "牌技训练场",
+  "description": "德州扑克 AI 陪练：专项训练、实时教练、好友房联机对练",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#071007",
+  "theme_color": "#071007",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

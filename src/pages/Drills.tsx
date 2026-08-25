@@ -42,7 +42,7 @@ export default function Drills() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      <header className="flex items-center gap-4 px-5 py-3 border-b border-slate-800 bg-slate-900/60">
+      <header className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-800 bg-slate-900/60 flex-wrap safe-top">
         <Link to="/" className="text-slate-400 hover:text-slate-200 text-sm">← 牌桌</Link>
         <Link to="/blackjack" className="text-slate-400 hover:text-slate-200 text-sm">♣ 21点</Link>
         <h1 className="text-lg font-bold">🎯 专项训练</h1>

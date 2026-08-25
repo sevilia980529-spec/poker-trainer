@@ -249,7 +249,7 @@ export default function PokerTrainer() {
   return (
     <div className="h-dvh flex flex-col bg-[#071007] text-slate-100 overflow-hidden select-none">
       {/* ===== 浮动顶栏 ===== */}
-      <header className="relative z-30 flex items-center justify-between px-3 py-2">
+      <header className="relative z-30 flex items-center justify-between px-3 py-2 safe-top">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="w-9 h-9 rounded-full bg-slate-900/80 border border-slate-700 flex items-center justify-center text-slate-300">
@@ -452,7 +452,7 @@ export default function PokerTrainer() {
 
       {/* ===== Hero 区域：手牌 + 教练条 + 操作 ===== */}
       {game && (
-        <footer className="relative z-30 pb-3 pt-1 flex flex-col items-center gap-2">
+        <footer className="relative z-30 pb-3 pt-1 flex flex-col items-center gap-2 safe-bottom">
           {/* 位置 + 手牌 */}
           <div className="flex flex-col items-center gap-1">
             <span className="text-[10px] text-slate-400 bg-black/50 rounded-full px-2 py-0.5">

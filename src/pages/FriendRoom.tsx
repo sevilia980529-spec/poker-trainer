@@ -135,7 +135,7 @@ export default function FriendRoom() {
 
   return (
     <div className="min-h-dvh bg-[#071007] text-slate-100 flex flex-col">
-      <header className="flex items-center gap-3 px-4 py-2.5">
+      <header className="flex items-center gap-3 px-4 py-2.5 safe-top">
         <Link to="/" className="text-slate-400 hover:text-slate-200 text-sm flex items-center gap-1">
           <ArrowLeft className="w-4 h-4" />牌桌
         </Link>
@@ -317,7 +317,7 @@ export default function FriendRoom() {
           </main>
 
           {/* 我的手牌 + 操作区 */}
-          <footer className="relative z-30 pb-3 pt-1 flex flex-col items-center gap-2">
+          <footer className="relative z-30 pb-3 pt-1 flex flex-col items-center gap-2 safe-bottom">
             <div className="flex gap-2">
               {youId >= 0 && game.players[youId]?.hole.map((c, i) => (
                 <span key={`${game.handNumber}-me-${cardToString(c)}`} className="anim-deal" style={{ animationDelay: `${i * 130}ms` }}>

@@ -103,18 +103,18 @@ export default function Blackjack() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      <header className="flex items-center gap-4 px-5 py-3 border-b border-slate-800 bg-slate-900/60">
-        <Link to="/" className="text-slate-400 hover:text-slate-200 text-sm">← 德州牌桌</Link>
-        <Link to="/drills" className="text-slate-400 hover:text-slate-200 text-sm">🎯 专项训练</Link>
-        <h1 className="text-lg font-bold">♣ 21点训练室</h1>
-        <Badge className="bg-amber-600">🫘 {profile.points.toLocaleString()} 分</Badge>
-        <span className="text-xs text-slate-400">本场盈亏 {sessionProfit >= 0 ? '+' : ''}{sessionProfit}</span>
-        <div className="ml-auto flex items-center gap-4 text-xs text-slate-300">
-          <label className="flex items-center gap-2">
-            <Switch checked={coachOn} onCheckedChange={setCoachOn} /> 策略教练
+      <header className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-800 bg-slate-900/60 flex-wrap safe-top">
+        <Link to="/" className="text-slate-400 hover:text-slate-200 text-sm">← 牌桌</Link>
+        <Link to="/drills" className="text-slate-400 hover:text-slate-200 text-sm">🎯 刷题</Link>
+        <h1 className="text-base font-bold">♣ 21点训练室</h1>
+        <Badge className="bg-amber-600">{profile.points.toLocaleString()} 分</Badge>
+        <span className="text-xs text-slate-400">盈亏 {sessionProfit >= 0 ? '+' : ''}{sessionProfit}</span>
+        <div className="ml-auto flex items-center gap-3 text-xs text-slate-300">
+          <label className="flex items-center gap-1.5">
+            <Switch checked={coachOn} onCheckedChange={setCoachOn} /> 教练
           </label>
-          <label className="flex items-center gap-2">
-            <Switch checked={showCount} onCheckedChange={setShowCount} /> 算牌显示
+          <label className="flex items-center gap-1.5">
+            <Switch checked={showCount} onCheckedChange={setShowCount} /> 算牌
           </label>
         </div>
       </header>
