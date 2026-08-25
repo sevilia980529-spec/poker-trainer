@@ -4,7 +4,7 @@ services:
     name: poker-trainer
     runtime: node
     plan: free
-    buildCommand: npm ci && npm run build && npm run build:server
+    buildCommand: npm ci --include=dev && npm run build && npm run build:server
     startCommand: node dist-server/server.mjs
     envVars:
       - key: NODE_ENV
