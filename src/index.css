@@ -139,3 +139,21 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .safe-top { padding-top: env(safe-area-inset-top); }
 .safe-bottom { padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }
 .safe-x { padding-left: env(safe-area-inset-right); padding-right: env(safe-area-inset-left); }
+
+/* ===== 全局质感（融合 PokerMind 设计系统） ===== */
+@layer base {
+  button { transition: all 0.15s ease; }
+  button:active:not(:disabled) { transform: scale(0.96); }
+
+  /* 金色滚动条 */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #1A1A1A; }
+  ::-webkit-scrollbar-thumb { background: #A67C32; border-radius: 3px; }
+}
+
+@layer components {
+  /* 玻璃拟态卡片 */
+  .glass {
+    @apply bg-black/60 backdrop-blur-md border border-white/5;
+  }
+}

@@ -150,7 +150,7 @@ export default function Blackjack() {
       <main className="flex-1 flex flex-col items-center p-3 gap-3 max-w-3xl mx-auto w-full">
         {/* ===== 牌桌呢绒区 ===== */}
         <div className="relative w-full rounded-[36px] border-[8px] border-[#4a3325] shadow-2xl overflow-hidden
-          bg-[radial-gradient(ellipse_at_center,#2e7d5b_0%,#1b5e43_55%,#12402e_100%)] px-4 py-5">
+          bg-[radial-gradient(ellipse_at_center,#1A7A52_0%,#0E5C3A_55%,#084A2D_100%)] px-4 py-5">
 
           {/* 庄家区 */}
           <div className="flex flex-col items-center gap-2">
