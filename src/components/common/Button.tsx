@@ -14,8 +14,8 @@ interface ButtonProps {
 const VARIANT_CLASSES = {
   primary: 'bg-gold text-ink hover:bg-gold-light active:bg-gold-dark',
   secondary: 'bg-ink-card text-ivory border border-gold-dark/50 hover:bg-ink-light hover:border-gold',
-  danger: 'bg-danger text-white hover:bg-red-600 shadow-card',
-  success: 'bg-success text-white hover:bg-green-600 shadow-card',
+  danger: 'bg-danger text-white hover:bg-red-600',
+  success: 'bg-success text-white hover:bg-green-600',
   ghost: 'bg-transparent text-ivory/80 hover:bg-ink-card hover:text-ivory',
 };
 

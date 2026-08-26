@@ -34,11 +34,11 @@ import { Menu, GraduationCap, Volume2, VolumeX, Coins, Target, Club, Users, Book
 
 // 椭圆桌 5 个 AI 座位（hero 固定在桌面下方）——全部收进容器内侧，避免手机端挡牌/出屏
 const AI_SEAT_POS = [
-  'left-[3%] bottom-[-2%]',
+  'left-[3%] bottom-[-7%]',
   'left-[0%] top-[14%]',
-  'left-1/2 -translate-x-1/2 top-[-8%]',
+  'left-1/2 -translate-x-1/2 top-[-14%]',
   'right-[0%] top-[14%]',
-  'right-[3%] bottom-[-2%]',
+  'right-[3%] bottom-[-7%]',
 ];
 
 const STYLE_EMOJI: Record<string, string> = {
@@ -419,9 +419,10 @@ export default function PokerTrainer() {
                 const corner = slot === 0 || slot === 4;
                 return (
                 <div key={p.id} className={cn('absolute flex gap-1',
-                  corner ? (slot === 0 ? 'flex-row-reverse items-center' : 'flex-row items-center') : 'flex-col items-center',
+                  corner ? (slot === 0 ? 'flex-row-reverse items-center' : 'flex-row items-center')
+                    : slot === 2 ? 'flex-col-reverse items-center' : 'flex-col items-center',
                   AI_SEAT_POS[slot], p.folded && 'opacity-40')}>
-                  <div className={cn('flex', corner ? '-space-x-3' : 'gap-1')}>
+                  <div className="flex -space-x-3">
                     {p.hole.map((c, j) => {
                       const revealed = game.street === 'handOver' && !p.folded && !!game.winners;
                       return (

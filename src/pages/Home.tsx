@@ -1,11 +1,10 @@
 import { useNavigate } from 'react-router';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Header from '../components/common/Header';
 import Button from '../components/common/Button';
 import { ToastContainer, useToast } from '../components/common/Toast';
 import { useUserStore, useLevel } from '../store/userStore';
 import { loadProfile, saveProfile } from '../store/points';
-import { RulesGuideDialog } from '../components/RulesGuide';
 
 const CHECKIN_CHIPS = 500;
 
@@ -17,7 +16,6 @@ export default function Home() {
   const consecutive = useUserStore((s) => s.consecutiveLoginDays);
   const xp = useUserStore((s) => s.xp);
   const toast = useToast();
-  const [showRules, setShowRules] = useState(false);
 
   const profile = loadProfile();
   const winRate = profile.handsPlayed > 0
@@ -133,7 +131,7 @@ export default function Home() {
           <h2 className="text-sm font-semibold text-ivory/80 px-1">开始游戏</h2>
           <Button fullWidth size="lg" variant="primary" onClick={() => navigate('/lobby')} className="!py-4">
             <span className="text-xl">♠</span>
-            <span>开始游戏</span>
+            <span>德州训练</span>
             <span className="text-xs opacity-70">单人对战 AI</span>
           </Button>
 
@@ -141,7 +139,7 @@ export default function Home() {
             <Button fullWidth variant="secondary" onClick={() => navigate('/training')}>
               <div className="flex flex-col items-center">
                 <span className="text-xl mb-0.5">🎯</span>
-                <span>训练模式</span>
+                <span>专项练习</span>
               </div>
             </Button>
             <Button fullWidth variant="secondary" onClick={() => navigate('/room')}>
@@ -169,40 +167,10 @@ export default function Home() {
           </Button>
         </section>
 
-        {/* 战绩区 */}
-        <section className="space-y-3 animate-fade-up" style={{ animationDelay: '0.15s' }}>
-          <h2 className="text-sm font-semibold text-ivory/80 px-1">查看</h2>
-          <div className="grid grid-cols-3 gap-3">
-            <button
-              onClick={() => navigate('/profile')}
-              className="glass rounded-2xl p-4 text-center active:scale-95 transition-transform"
-            >
-              <div className="text-2xl mb-1">👤</div>
-              <div className="text-sm font-medium">个人中心</div>
-            </button>
-            <button
-              onClick={() => setShowRules(true)}
-              className="glass rounded-2xl p-4 text-center active:scale-95 transition-transform"
-            >
-              <div className="text-2xl mb-1">📖</div>
-              <div className="text-sm font-medium">规则术语</div>
-            </button>
-            <button
-              onClick={() => navigate('/training')}
-              className="glass rounded-2xl p-4 text-center active:scale-95 transition-transform"
-            >
-              <div className="text-2xl mb-1">🏆</div>
-              <div className="text-sm font-medium">训练数据</div>
-            </button>
-          </div>
-        </section>
-
         <div className="text-center text-xs text-ivory/30 pt-4">
           PokerMind · AI 德州陪练 · 让你成为更好的牌手
         </div>
       </main>
-
-      <RulesGuideDialog open={showRules} onOpenChange={setShowRules} />
     </div>
   );
 }

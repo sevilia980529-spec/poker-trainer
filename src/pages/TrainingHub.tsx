@@ -24,7 +24,7 @@ export default function TrainingHub() {
       <Header />
       <main className="flex-1 px-4 py-6 pb-8 max-w-2xl mx-auto w-full space-y-4">
         <div className="text-center mb-2 animate-fade-up">
-          <h1 className="text-2xl font-bold text-gold mb-1">🎯 训练模式</h1>
+          <h1 className="text-2xl font-bold text-gold mb-1">🎯 专项练习</h1>
           <p className="text-sm text-ivory/60">练好技术再上桌</p>
         </div>
 
@@ -68,7 +68,7 @@ export default function TrainingHub() {
                 className={`
                   w-full text-left rounded-2xl p-4
                   bg-gradient-to-br ${t.color}
-                  shadow-card active:scale-[0.98] transition-transform animate-fade-up
+                  active:scale-[0.98] transition-transform animate-fade-up
                 `}
                 style={{ animationDelay: `${0.1 + i * 0.05}s` }}
               >
@@ -87,22 +87,6 @@ export default function TrainingHub() {
               </button>
             );
           })}
-
-          {/* 21点策略 */}
-          <button
-            onClick={() => navigate('/blackjack')}
-            className="w-full text-left rounded-2xl p-4 bg-gradient-to-br from-pink-600 to-pink-400 shadow-card active:scale-[0.98] transition-transform animate-fade-up"
-            style={{ animationDelay: '0.3s' }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="text-4xl">🎰</div>
-              <div className="flex-1">
-                <div className="font-bold text-white text-lg">21点策略</div>
-                <div className="text-xs text-white/80 mt-0.5">Basic Strategy 实战训练</div>
-              </div>
-              <div className="text-white text-2xl">→</div>
-            </div>
-          </button>
         </div>
       </main>
 

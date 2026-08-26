@@ -20,11 +20,11 @@ interface LobbyPlayer { name: string; seatIdx: number; connected: boolean }
 
 // 对手座位（相对牌桌容器），hero 固定在桌面下方——全部收进容器内侧，避免手机端挡牌/出屏
 const SEAT_POS = [
-  'left-[3%] bottom-[-2%]',
+  'left-[3%] bottom-[-7%]',
   'left-[0%] top-[14%]',
-  'left-1/2 -translate-x-1/2 top-[-8%]',
+  'left-1/2 -translate-x-1/2 top-[-14%]',
   'right-[0%] top-[14%]',
-  'right-[3%] bottom-[-2%]',
+  'right-[3%] bottom-[-7%]',
 ];
 
 export default function FriendRoom() {
@@ -258,9 +258,10 @@ export default function FriendRoom() {
                 const score = scores[p.id];
                 return (
                   <div key={p.id} className={cn('absolute flex gap-1',
-                    corner ? (slot === 0 ? 'flex-row-reverse items-center' : 'flex-row items-center') : 'flex-col items-center',
+                    corner ? (slot === 0 ? 'flex-row-reverse items-center' : 'flex-row items-center')
+                      : slot === 2 ? 'flex-col-reverse items-center' : 'flex-col items-center',
                     posClass, p.folded && 'opacity-40')}>
-                    <div className={cn('flex', corner ? '-space-x-3' : 'gap-1')}>
+                    <div className="flex -space-x-3">
                       {revealed
                         ? p.hole.map((c, j) => (
                           <span key={`${game.handNumber}-${p.id}-${j}-r`} className="anim-flip" style={{ animationDelay: `${j * 120}ms` }}>
