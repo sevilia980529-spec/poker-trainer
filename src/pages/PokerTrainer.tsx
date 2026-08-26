@@ -1,6 +1,6 @@
 // 德州扑克 AI 训练场 — 主页面（专业牌类 App 布局：大牌桌 + 抽屉式教练 + 浮动菜单）
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import type { GameState, ActionType } from '../engine/game';
 import {
   newHand, applyAction, legalActions, isHeroTurn, heroPositionName, STREET_NAME,
@@ -20,6 +20,7 @@ import { useUserStore } from '../store/userStore';
 import { CoachPanel } from '../components/CoachPanel';
 import { ReviewList } from '../components/ReviewList';
 import { RulesGuideDialog } from '../components/RulesGuide';
+import SettlementModal from '../components/SettlementModal';
 import { Button } from '../components/ui/button';
 import { Slider } from '../components/ui/slider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
@@ -63,6 +64,7 @@ const SEAT_LAYOUTS: Record<number, number[]> = {
 };
 
 export default function PokerTrainer() {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<PlayerProfile>(loadProfile);
   const [tableConfig] = useState(loadTableConfig);
   const botStyles = DIFFICULTY_STYLES[tableConfig.difficulty].slice(0, tableConfig.playerCount - 1);
@@ -79,6 +81,7 @@ export default function PokerTrainer() {
   const [handResult, setHandResult] = useState<{ delta: number; info: string } | null>(null);
   const [reviews, setReviews] = useState(loadReviews);
   const [showRules, setShowRules] = useState(false);
+  const [showSettle, setShowSettle] = useState(false);
   const [soundOn, setSoundOn] = useState(!isMuted());
   const [blinds, setBlinds] = useState<[number, number]>(() => {
     try {
@@ -118,6 +121,7 @@ export default function PokerTrainer() {
     setHandResult(null);
     setShowReview(false);
     setShowRaise(false);
+    setShowSettle(false);
     setGame(g);
   }, [handNumber, profile.points, blinds]);
 
@@ -172,8 +176,14 @@ export default function PokerTrainer() {
     return () => { cancelAnimationFrame(raf); clearTimeout(timer); };
   }, [game?.street]);
 
-  const onHandEnd = useCallback((finalState: GameState) => {
-    const hero = finalState.players[0];
+  // 结算面板：延迟 1.6s 弹出（先看清最终牌面）
+  useEffect(() => {
+    if (!game || game.street !== 'handOver') return;
+    const t = setTimeout(() => setShowSettle(true), 1600);
+    return () => clearTimeout(t);
+  }, [game?.street, game?.handNumber]);
+
+  const onHandEnd = useCallback((finalState: GameState) => {    const hero = finalState.players[0];
     const delta = hero.chips - startStackRef.current;
     if (delta > 0) playWin(); else if (delta < 0) playLose();
     const heroWon = finalState.winners?.some(w => w.playerId === 0) ?? false;
@@ -475,6 +485,36 @@ export default function PokerTrainer() {
                 </div>
                 );
               })}
+
+              {/* 我的座位（牌桌正下方暗区） */}
+              <div className="absolute left-1/2 -translate-x-1/2 bottom-[-4%] flex flex-col items-center gap-1">
+                {game.players[0].lastAction && (
+                  <div key={`hero-${game.players[0].lastAction}-${game.actingIdx}`}
+                    className="text-[10px] bg-sky-600/90 rounded-full px-2 py-0.5 whitespace-nowrap anim-pop">
+                    {game.players[0].lastAction}
+                  </div>
+                )}
+                <div className={cn('flex items-center gap-1.5 rounded-full bg-black/70 pl-1 pr-2.5 py-1 border',
+                  game.actingIdx === 0 && game.street !== 'handOver' ? 'border-2 border-gold' : 'border-slate-700',
+                  game.street === 'handOver' && game.winners?.some(w => w.playerId === 0) && 'anim-winner border-amber-300')}>
+                  <span className="w-7 h-7 rounded-full bg-gradient-to-br from-gold to-gold-dark flex items-center justify-center text-sm relative">
+                    {avatar}
+                    {game.dealerIdx === 0 && (
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 text-[8px] text-black font-bold flex items-center justify-center">D</span>
+                    )}
+                  </span>
+                  <div className="leading-tight">
+                    <div className="text-[11px] font-semibold whitespace-nowrap">{nickname}</div>
+                    <div className="text-[10px] text-amber-300 font-mono num">{game.players[0].chips}</div>
+                  </div>
+                </div>
+                {game.players[0].streetBet > 0 && (
+                  <span key={`hero-bet-${game.players[0].streetBet}`} className="anim-chip inline-flex items-center gap-1 bg-black/70 rounded-full pl-0.5 pr-1.5 py-0.5">
+                    <Chip size={15} />
+                    <span className="text-[10px] font-mono text-amber-300 font-bold">{game.players[0].streetBet}</span>
+                  </span>
+                )}
+              </div>
             </>
           )}
         </div>
@@ -590,6 +630,30 @@ export default function PokerTrainer() {
             <p className="text-[11px] text-slate-500 h-6">等待其他玩家行动…</p>
           )}
         </footer>
+      )}
+
+      {/* 结算弹窗 */}
+      {game && game.street === 'handOver' && (
+        <SettlementModal
+          open={showSettle}
+          onClose={() => setShowSettle(false)}
+          heroWon={!!game.winners?.some(w => w.playerId === 0)}
+          delta={handResult?.delta ?? null}
+          xpGain={game.winners?.some(w => w.playerId === 0) ? 30 : 10}
+          info={game.handOverInfo ?? ''}
+          players={game.players.map(p => ({
+            name: p.isHero ? nickname : p.name,
+            avatar: p.isHero ? avatar : (STYLE_EMOJI[p.style] ?? '🤖'),
+            hole: p.folded ? [] : p.hole,
+            folded: p.folded,
+            winner: !!game.winners?.some(w => w.playerId === p.id),
+            isHero: p.isHero,
+            winAmount: game.winners?.find(w => w.playerId === p.id)?.amount,
+          }))}
+          onNext={nextHand}
+          onReview={() => { setShowSettle(false); setShowReview(true); }}
+          onHome={() => navigate('/')}
+        />
       )}
 
       {/* 规则与术语弹窗 */}

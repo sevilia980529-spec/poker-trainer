@@ -1,11 +1,12 @@
 // 好友房：创建/加入房间 + 联机牌桌（布局与主训练场一致：椭圆桌 + 底部操作区）
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import type { GameState, ActionType } from '../engine/game';
 import { legalActions, STREET_NAME } from '../engine/game';
 import { cardToString } from '../engine/cards';
 import { loadProfile, saveProfile } from '../store/points';
 import { PlayingCard } from '../components/PlayingCard';
+import SettlementModal from '../components/SettlementModal';
 import { Chip, ChipStack } from '../components/ChipStack';
 import { playDeal, playChips, playClick, playFold, playWin, playLose } from '../lib/sound';
 import { Button } from '../components/ui/button';
@@ -28,6 +29,7 @@ const SEAT_POS = [
 ];
 
 export default function FriendRoom() {
+  const navigate = useNavigate();
   const [phase, setPhase] = useState<Phase>('connect');
   const [name, setName] = useState(() => localStorage.getItem('poker-trainer-nickname') ?? '');
   const [roomCode, setRoomCode] = useState('');
@@ -38,6 +40,8 @@ export default function FriendRoom() {
   const [youId, setYouId] = useState(-1);
   const [raiseAmt, setRaiseAmt] = useState(60);
   const [sessionDelta, setSessionDelta] = useState(0);
+  const [showSettle, setShowSettle] = useState(false);
+  const [handDelta, setHandDelta] = useState<number | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const startChipsRef = useRef<{ hand: number; chips: number } | null>(null);
   const settledHandRef = useRef(0);
@@ -71,10 +75,13 @@ export default function FriendRoom() {
             if (s.street !== 'handOver') {
               if (startChipsRef.current?.hand !== s.handNumber) {
                 startChipsRef.current = { hand: s.handNumber, chips: me.chips + me.handBet };
+                setHandDelta(null);
+                setShowSettle(false);
               }
             } else if (settledHandRef.current !== s.handNumber && startChipsRef.current?.hand === s.handNumber) {
               settledHandRef.current = s.handNumber;
               const delta = me.chips - startChipsRef.current.chips;
+              setHandDelta(delta);
               if (delta > 0) playWin(); else if (delta < 0) playLose();
               if (delta !== 0) {
                 const p = loadProfile();
@@ -128,6 +135,13 @@ export default function FriendRoom() {
   useEffect(() => {
     if (la) setRaiseAmt(Math.min(Math.max(game!.bigBlind * 3, la.minRaiseTo), la.maxRaiseTo));
   }, [game?.actingIdx, game?.street]);
+
+  // 结算面板：延迟 1.6s 弹出（先看清最终牌面）
+  useEffect(() => {
+    if (!game || game.street !== 'handOver') return;
+    const t = setTimeout(() => setShowSettle(true), 1600);
+    return () => clearTimeout(t);
+  }, [game?.street, game?.handNumber]);
 
   const pot = game?.players.reduce((s, p) => s + p.handBet, 0) ?? 0;
   // 座位旋转：自己永远在桌面正下方
@@ -322,6 +336,43 @@ export default function FriendRoom() {
                   </div>
                 );
               })}
+
+              {/* 我的座位（牌桌正下方暗区） */}
+              {youId >= 0 && game.players[youId] && (
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-[-4%] flex flex-col items-center gap-1">
+                  {game.players[youId].lastAction && (
+                    <div key={`hero-${game.players[youId].lastAction}-${game.actingIdx}`}
+                      className="text-[10px] bg-sky-600/90 rounded-full px-2 py-0.5 whitespace-nowrap anim-pop">
+                      {game.players[youId].lastAction}
+                    </div>
+                  )}
+                  <div className={cn('flex items-center gap-1.5 rounded-full bg-black/70 pl-1 pr-2.5 py-1 border',
+                    game.actingIdx === youId && game.street !== 'handOver' ? 'border-2 border-gold' : 'border-slate-700',
+                    game.street === 'handOver' && game.winners?.some(w => w.playerId === youId) && 'anim-winner border-amber-300')}>
+                    <span className="w-7 h-7 rounded-full bg-gradient-to-br from-gold to-amber-700 flex items-center justify-center text-xs relative font-bold text-black">
+                      {game.players[youId].name.slice(0, 1)}
+                      {game.dealerIdx === youId && (
+                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 text-[8px] text-black font-bold flex items-center justify-center">D</span>
+                      )}
+                    </span>
+                    <div className="leading-tight">
+                      <div className="text-[11px] font-semibold whitespace-nowrap">{game.players[youId].name}<span className="text-gold text-[10px] ml-1">(你)</span></div>
+                      <div className="text-[10px] font-mono">
+                        <span className="text-amber-300">{game.players[youId].chips}</span>
+                        {scores[youId] !== undefined && (
+                          <span className={cn('ml-1', scores[youId] < 0 ? 'text-red-400' : 'text-slate-400')}>/ {scores[youId]}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  {game.players[youId].streetBet > 0 && (
+                    <span key={`hero-bet-${game.players[youId].streetBet}`} className="anim-chip inline-flex items-center gap-1 bg-black/70 rounded-full pl-0.5 pr-1.5 py-0.5">
+                      <Chip size={15} />
+                      <span className="text-[10px] font-mono text-amber-300 font-bold">{game.players[youId].streetBet}</span>
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </main>
 
@@ -372,6 +423,32 @@ export default function FriendRoom() {
               game.street !== 'handOver' && <p className="text-[11px] text-slate-500 h-6">等待其他玩家行动…</p>
             )}
           </footer>
+
+          {/* 结算弹窗 */}
+          {game.street === 'handOver' && youId >= 0 && (
+            <SettlementModal
+              open={showSettle}
+              onClose={() => setShowSettle(false)}
+              heroWon={!!game.winners?.some(w => w.playerId === youId)}
+              delta={handDelta}
+              info={game.handOverInfo ?? ''}
+              players={game.players.map(p => ({
+                name: p.name,
+                avatar: p.id === youId ? '⭐' : p.name.slice(0, 1),
+                hole: p.folded ? [] : p.hole,
+                folded: p.folded,
+                winner: !!game.winners?.some(w => w.playerId === p.id),
+                isHero: p.id === youId,
+                winAmount: game.winners?.find(w => w.playerId === p.id)?.amount,
+              }))}
+              onNext={() => {
+                setShowSettle(false);
+                if (isHost) send({ type: 'start' });
+              }}
+              nextLabel={isHost ? '下一手 ▶' : '知道了'}
+              onHome={() => navigate('/')}
+            />
+          )}
         </>
       )}
     </div>
