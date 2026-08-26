@@ -305,16 +305,14 @@ export default function FriendRoom() {
                         ))}
                       </div>
                     )}
-                    </div>
+                    {/* 下注徽章：统一在名字正下方 */}
                     {p.streetBet > 0 && (
-                      <div className={cn('absolute',
-                        slot === 2 ? 'left-[105%] top-1/2 -translate-y-1/2' : '-bottom-1 left-1/2 -translate-x-1/2 translate-y-full')}>
-                        <span key={p.streetBet} className="anim-chip inline-flex items-center gap-1 bg-black/70 rounded-full pl-0.5 pr-1.5 py-0.5">
-                          <Chip size={15} />
-                          <span className="text-[10px] font-mono text-amber-300 font-bold">{p.streetBet}</span>
-                        </span>
-                      </div>
+                      <span key={p.streetBet} className="anim-chip inline-flex items-center gap-1 bg-black/70 rounded-full pl-0.5 pr-1.5 py-0.5">
+                        <Chip size={15} />
+                        <span className="text-[10px] font-mono text-amber-300 font-bold">{p.streetBet}</span>
+                      </span>
                     )}
+                    </div>
                     {p.lastAction && (
                       <div key={`${p.id}-${p.lastAction}-${game.actingIdx}`}
                         className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] bg-sky-600/90 rounded-full px-2 py-0.5 whitespace-nowrap anim-pop">
