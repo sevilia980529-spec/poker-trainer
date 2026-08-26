@@ -22,7 +22,7 @@ interface LobbyPlayer { name: string; seatIdx: number; connected: boolean }
 const SEAT_POS = [
   'left-[3%] bottom-[-7%]',
   'left-[0%] top-[14%]',
-  'left-1/2 -translate-x-1/2 top-[-14%]',
+  'left-1/2 -translate-x-1/2 top-[-20%]',
   'right-[0%] top-[14%]',
   'right-[3%] bottom-[-7%]',
 ];
@@ -307,7 +307,8 @@ export default function FriendRoom() {
                     )}
                     </div>
                     {p.streetBet > 0 && (
-                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 translate-y-full">
+                      <div className={cn('absolute left-1/2 -translate-x-1/2',
+                        slot === 2 ? '-top-1 -translate-y-full' : '-bottom-1 translate-y-full')}>
                         <span key={p.streetBet} className="anim-chip inline-flex items-center gap-1 bg-black/70 rounded-full pl-0.5 pr-1.5 py-0.5">
                           <Chip size={15} />
                           <span className="text-[10px] font-mono text-amber-300 font-bold">{p.streetBet}</span>

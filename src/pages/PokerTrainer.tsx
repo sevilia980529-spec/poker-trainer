@@ -36,7 +36,7 @@ import { Menu, GraduationCap, Volume2, VolumeX, Coins, Target, Club, Users, Book
 const AI_SEAT_POS = [
   'left-[3%] bottom-[-7%]',
   'left-[0%] top-[14%]',
-  'left-1/2 -translate-x-1/2 top-[-14%]',
+  'left-1/2 -translate-x-1/2 top-[-20%]',
   'right-[0%] top-[14%]',
   'right-[3%] bottom-[-7%]',
 ];
@@ -48,11 +48,11 @@ const STYLE_EMOJI: Record<string, string> = {
 // 各座位中心相对牌桌容器的百分比坐标（用于筹码飞行动画）
 const SEAT_PCT_HERO = { x: 50, y: 108 };
 const SEAT_PCT_AI = [
-  { x: 12, y: 94 },    // 左下
+  { x: 12, y: 100 },   // 左下
   { x: 8, y: 24 },     // 左上
-  { x: 50, y: -2 },    // 正上
+  { x: 50, y: -10 },   // 正上
   { x: 92, y: 24 },    // 右上
-  { x: 88, y: 94 },    // 右下
+  { x: 88, y: 100 },   // 右下
 ];
 
 // AI 数量 → 使用哪些座位槽位（AI_SEAT_POS / SEAT_PCT_AI 的下标）
@@ -459,7 +459,8 @@ export default function PokerTrainer() {
                   )}
                   </div>
                   {p.streetBet > 0 && (
-                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 translate-y-full">
+                    <div className={cn('absolute left-1/2 -translate-x-1/2',
+                      slot === 2 ? '-top-1 -translate-y-full' : '-bottom-1 translate-y-full')}>
                       <span key={p.streetBet} className="anim-chip inline-flex items-center gap-1 bg-black/70 rounded-full pl-0.5 pr-1.5 py-0.5">
                         <Chip size={15} />
                         <span className="text-[10px] font-mono text-amber-300 font-bold">{p.streetBet}</span>
