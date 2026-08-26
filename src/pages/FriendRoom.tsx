@@ -307,8 +307,8 @@ export default function FriendRoom() {
                     )}
                     </div>
                     {p.streetBet > 0 && (
-                      <div className={cn('absolute left-1/2 -translate-x-1/2',
-                        slot === 2 ? '-top-1 -translate-y-full' : '-bottom-1 translate-y-full')}>
+                      <div className={cn('absolute',
+                        slot === 2 ? 'left-[105%] top-1/2 -translate-y-1/2' : '-bottom-1 left-1/2 -translate-x-1/2 translate-y-full')}>
                         <span key={p.streetBet} className="anim-chip inline-flex items-center gap-1 bg-black/70 rounded-full pl-0.5 pr-1.5 py-0.5">
                           <Chip size={15} />
                           <span className="text-[10px] font-mono text-amber-300 font-bold">{p.streetBet}</span>
