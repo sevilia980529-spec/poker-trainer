@@ -413,10 +413,15 @@ export default function PokerTrainer() {
                 )}
               </div>
 
-              {/* AI 座位 */}
-              {game.players.slice(1).map((p, i) => (
-                <div key={p.id} className={cn('absolute flex flex-col items-center gap-1', AI_SEAT_POS[seatSlots[i] ?? 2], p.folded && 'opacity-40')}>
-                  <div className="flex gap-1">
+              {/* AI 座位（左右下角的手牌横排在头像旁，收进桌面外暗区，不挡公共牌） */}
+              {game.players.slice(1).map((p, i) => {
+                const slot = seatSlots[i] ?? 2;
+                const corner = slot === 0 || slot === 4;
+                return (
+                <div key={p.id} className={cn('absolute flex gap-1',
+                  corner ? (slot === 0 ? 'flex-row-reverse items-center' : 'flex-row items-center') : 'flex-col items-center',
+                  AI_SEAT_POS[slot], p.folded && 'opacity-40')}>
+                  <div className={cn('flex', corner ? '-space-x-3' : 'gap-1')}>
                     {p.hole.map((c, j) => {
                       const revealed = game.street === 'handOver' && !p.folded && !!game.winners;
                       return (
@@ -428,6 +433,7 @@ export default function PokerTrainer() {
                       );
                     })}
                   </div>
+                  <div className="flex flex-col items-center gap-1">
                   <div className={cn('flex items-center gap-1.5 rounded-full bg-black/70 pl-1 pr-2.5 py-1 border',
                     game.actingIdx === p.id ? 'border-2 border-gold' : 'border-slate-700',
                     game.street === 'handOver' && game.winners?.some(w => w.playerId === p.id) && 'anim-winner border-amber-300')}>
@@ -450,6 +456,7 @@ export default function PokerTrainer() {
                       ))}
                     </div>
                   )}
+                  </div>
                   {p.streetBet > 0 && (
                     <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 translate-y-full">
                       <span key={p.streetBet} className="anim-chip inline-flex items-center gap-1 bg-black/70 rounded-full pl-0.5 pr-1.5 py-0.5">
@@ -465,7 +472,8 @@ export default function PokerTrainer() {
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </>
           )}
         </div>
@@ -561,13 +569,13 @@ export default function PokerTrainer() {
                   </Button>
                 )}
                 {la!.canRaise && !showRaise && (
-                  <Button className="rounded-xl h-12 px-6 bg-gold hover:bg-gold-light text-ink text-base font-bold shadow-card" onClick={() => setShowRaise(true)}>
+                  <Button className="rounded-xl h-12 px-6 bg-gold hover:bg-gold-light text-ink text-base font-bold" onClick={() => setShowRaise(true)}>
                     加注
                   </Button>
                 )}
                 {la!.canRaise && showRaise && (
                   <>
-                    <Button className="rounded-xl h-12 px-5 bg-gold hover:bg-gold-light text-ink text-base font-bold shadow-card"
+                    <Button className="rounded-xl h-12 px-5 bg-gold hover:bg-gold-light text-ink text-base font-bold"
                       onClick={() => heroAct(raiseAmt >= la!.maxRaiseTo ? 'allin' : game.currentBet > 0 ? 'raise' : 'bet', raiseAmt)}>
                       {raiseAmt >= la!.maxRaiseTo ? `全下 ${raiseAmt}` : `加到 ${raiseAmt}`}
                     </Button>

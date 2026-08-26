@@ -248,15 +248,19 @@ export default function FriendRoom() {
                 )}
               </div>
 
-              {/* 对手座位（旋转视角：自己恒在下方） */}
+              {/* 对手座位（旋转视角：自己恒在下方；左右下角手牌横排在头像旁，收进桌面外暗区） */}
               {game.players.filter(p => p.id !== youId).map(p => {
                 const rel = seatRel(p.id);
-                const posClass = SEAT_POS[(rel - 1 + 6) % 6] ?? SEAT_POS[0];
+                const slot = (rel - 1 + 6) % 6;
+                const corner = slot === 0 || slot === 4;
+                const posClass = SEAT_POS[slot] ?? SEAT_POS[0];
                 const revealed = p.hole.length > 0;
                 const score = scores[p.id];
                 return (
-                  <div key={p.id} className={cn('absolute flex flex-col items-center gap-1', posClass, p.folded && 'opacity-40')}>
-                    <div className="flex gap-1">
+                  <div key={p.id} className={cn('absolute flex gap-1',
+                    corner ? (slot === 0 ? 'flex-row-reverse items-center' : 'flex-row items-center') : 'flex-col items-center',
+                    posClass, p.folded && 'opacity-40')}>
+                    <div className={cn('flex', corner ? '-space-x-3' : 'gap-1')}>
                       {revealed
                         ? p.hole.map((c, j) => (
                           <span key={`${game.handNumber}-${p.id}-${j}-r`} className="anim-flip" style={{ animationDelay: `${j * 120}ms` }}>
@@ -270,6 +274,7 @@ export default function FriendRoom() {
                           </>
                         )}
                     </div>
+                    <div className="flex flex-col items-center gap-1">
                     <div className={cn('flex items-center gap-1.5 rounded-full bg-black/70 pl-1 pr-2.5 py-1 border',
                       game.actingIdx === p.id && game.street !== 'handOver' ? 'border-2 border-gold' : 'border-slate-700',
                       game.street === 'handOver' && game.winners?.some(w => w.playerId === p.id) && 'anim-winner border-amber-300')}>
@@ -299,6 +304,7 @@ export default function FriendRoom() {
                         ))}
                       </div>
                     )}
+                    </div>
                     {p.streetBet > 0 && (
                       <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 translate-y-full">
                         <span key={p.streetBet} className="anim-chip inline-flex items-center gap-1 bg-black/70 rounded-full pl-0.5 pr-1.5 py-0.5">
