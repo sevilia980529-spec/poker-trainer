@@ -45,8 +45,9 @@ const AI_SEAT_POS = [
   'right-[3%] bottom-[-7%]',
 ];
 
+// 机器人（AI）风格头像：用户提供的动物形象（public/icons/ 下）
 const STYLE_ICON: Record<string, string> = {
-  tag: 'fox', lag: 'fire', station: 'pig', nit: 'rock', balanced: 'scale',
+  tag: 'fox', lag: 'leopard', station: 'capybara', nit: 'owl', balanced: 'collie',
 };
 const styleAvatar = (style: string) => `/icons/${STYLE_ICON[style] ?? 'robot'}.png`;
 
