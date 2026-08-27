@@ -30,7 +30,7 @@ function GdCardView({ card, level, selected, onClick, mini }: {
         isJoker ? 'bg-violet-100 text-violet-900 border-violet-400'
           : red ? 'bg-white text-red-600 border-gray-300' : 'bg-white text-gray-900 border-gray-300',
         wild && 'ring-2 ring-amber-400',
-        selected && '-translate-y-3.5 ring-2 ring-sky-400',
+        selected && '-translate-y-3.5 ring-2 ring-gold',
         onClick && 'cursor-pointer hover:-translate-y-2',
       )}>
       {isJoker ? <span>{card.rank === 15 ? '小王' : '大王'}</span> : (
@@ -208,21 +208,21 @@ export default function Guandan() {
     const theirLast = lastPlay && lastPlay.seat === seat ? lastPlay : null;
     return (
       <div className={cn('absolute', posClass, 'flex', vertical ? 'flex-col items-center' : 'flex-col items-center', 'gap-1')}>
-        <div className={cn('px-2.5 py-1 rounded-lg text-xs bg-slate-900/85 border text-center min-w-16',
-          game.turn === seat && game.phase === 'playing' ? 'border-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]' : 'border-slate-700')}>
+        <div className={cn('px-2.5 py-1 rounded-lg text-xs bg-ink-card/85 border text-center min-w-16',
+          game.turn === seat && game.phase === 'playing' ? 'border-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]' : 'border-ink-light/60')}>
           <div className="font-semibold">
             {p.name}
-            <span className={cn('ml-1', teamOf(seat) === 0 ? 'text-sky-400' : 'text-red-400')}>
+            <span className={cn('ml-1', teamOf(seat) === 0 ? 'text-gold' : 'text-red-400')}>
               {teamOf(seat) === 0 ? '我方' : '对方'}
             </span>
           </div>
-          <div className="text-slate-400">余 {p.hand.length} 张</div>
+          <div className="text-ivory/60">余 {p.hand.length} 张</div>
           {p.finished && (
             <div className="text-amber-300 font-bold">{['头游', '二游', '三游', '末游'][p.finishOrder - 1]}</div>
           )}
         </div>
         {theirLast && (
-          <div className="flex gap-0.5 bg-slate-900/60 rounded p-1">
+          <div className="flex gap-0.5 bg-ink-card/60 rounded p-1">
             {theirLast.cards.map(c => <GdCardView key={c.id} card={c} level={game.playingLevel} mini />)}
           </div>
         )}
@@ -231,15 +231,15 @@ export default function Guandan() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      <header className="flex items-center gap-4 px-5 py-3 border-b border-slate-800 bg-slate-900/60 flex-wrap">
-        <Link to="/" className="text-slate-400 hover:text-slate-200 text-sm">← 德州牌桌</Link>
-        <Link to="/drills" className="text-slate-400 hover:text-slate-200 text-sm">🎯 专项训练</Link>
-        <Link to="/blackjack" className="text-slate-400 hover:text-slate-200 text-sm">♣ 21点</Link>
+    <div className="min-h-screen bg-[#071007] text-ivory flex flex-col">
+      <header className="flex items-center gap-4 px-5 py-3 border-b border-ink-light/50 bg-ink-card/60 flex-wrap">
+        <Link to="/" className="text-ivory/60 hover:text-ivory text-sm">← 德州牌桌</Link>
+        <Link to="/drills" className="text-ivory/60 hover:text-ivory text-sm">🎯 专项训练</Link>
+        <Link to="/blackjack" className="text-ivory/60 hover:text-ivory text-sm">♣ 21点</Link>
         <h1 className="text-lg font-bold">🃏 掼蛋训练场</h1>
         <Badge className="bg-emerald-700">本局打 {RANK_LABEL[playingLevel]}</Badge>
         <Badge variant="outline" className="text-amber-300 border-amber-700">红桃{RANK_LABEL[playingLevel]} = 百搭</Badge>
-        <span className="text-xs text-slate-400">我方级牌 {RANK_LABEL[level[0]]} · 对方 {RANK_LABEL[level[1]]}</span>
+        <span className="text-xs text-ivory/60">我方级牌 {RANK_LABEL[level[0]]} · 对方 {RANK_LABEL[level[1]]}</span>
         <Badge className="bg-amber-600 ml-auto">🫘 {profile.points.toLocaleString()} 分</Badge>
       </header>
 
@@ -254,25 +254,25 @@ export default function Guandan() {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center space-y-1">
             {lastPlay ? (
               <>
-                <p className="text-xs text-slate-300">
+                <p className="text-xs text-ivory/80">
                   {game.players[lastPlay.seat].name}：{COMBO_NAME[lastPlay.combo.type]}
                 </p>
                 {lastPlay.seat === 0 && (
-                  <div className="flex gap-0.5 justify-center bg-slate-900/60 rounded p-1">
+                  <div className="flex gap-0.5 justify-center bg-ink-card/60 rounded p-1">
                     {lastPlay.cards.map(c => <GdCardView key={c.id} card={c} level={game.playingLevel} mini />)}
                   </div>
                 )}
               </>
             ) : (
-              <p className="text-xs text-slate-400">新一轮领出</p>
+              <p className="text-xs text-ivory/60">新一轮领出</p>
             )}
-            {game.message && <p className="text-[11px] text-slate-500 max-w-64 mx-auto">{game.message}</p>}
+            {game.message && <p className="text-[11px] text-ivory/45 max-w-64 mx-auto">{game.message}</p>}
           </div>
         </div>
 
         {/* 提示/错误 */}
         {error && (
-          <p className={cn('text-xs text-center', error.startsWith('💡') ? 'text-sky-300' : 'text-red-400')}>{error}</p>
+          <p className={cn('text-xs text-center', error.startsWith('💡') ? 'text-gold-light' : 'text-red-400')}>{error}</p>
         )}
 
         {/* 我的手牌（扇形手持布局） */}
@@ -288,10 +288,10 @@ export default function Guandan() {
           <div className="flex items-center justify-center gap-2 flex-wrap">
             <button
               onClick={() => setSortMode(m => (m === 'rank' ? 'suit' : 'rank'))}
-              className="text-xs rounded-full px-3 py-1.5 border border-slate-600 bg-slate-800/80 text-slate-300 hover:bg-slate-700">
+              className="text-xs rounded-full px-3 py-1.5 border border-ink-light/70 bg-ink-light/80 text-ivory/80 hover:bg-ink-light">
               🔄 理牌 · {sortMode === 'rank' ? '按大小' : '按花色'}
             </button>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-ivory/60">
               {selCards.length > 0
                 ? selCombo ? `已选 ${selCards.length} 张：${COMBO_NAME[selCombo.type]}` : `已选 ${selCards.length} 张：不是合法牌型`
                 : myTurn ? '点击手牌选择要出的牌' : '等待其他玩家…'}
@@ -300,7 +300,7 @@ export default function Guandan() {
               <>
                 <Button className="bg-amber-600 hover:bg-amber-500" disabled={!selCombo} onClick={play}>出牌</Button>
                 {canPass && <Button variant="secondary" onClick={pass}>过牌</Button>}
-                <Button variant="outline" className="border-sky-700 text-sky-300" onClick={hint}>
+                <Button variant="outline" className="border-gold-dark text-gold-light" onClick={hint}>
                   {hintUsed ? '再想想' : '💡 提示'}
                 </Button>
               </>
@@ -311,14 +311,14 @@ export default function Guandan() {
 
       {/* 局结束弹窗 */}
       <Dialog open={showRoundOver} onOpenChange={setShowRoundOver}>
-        <DialogContent className="bg-slate-900 border-slate-700 text-slate-100 max-w-md">
+        <DialogContent className="bg-ink-card border-ink-light/60 text-ivory max-w-md">
           <DialogHeader>
             <DialogTitle>{game.phase === 'matchOver' ? '🏆 比赛结束' : '本局结束'}</DialogTitle>
           </DialogHeader>
           {game.roundResult && (
             <div className="space-y-2 text-sm">
               <p>名次：{game.roundResult.order.map((s, i) => (
-                <span key={s} className={cn(teamOf(s) === 0 ? 'text-sky-300' : 'text-red-300')}>
+                <span key={s} className={cn(teamOf(s) === 0 ? 'text-gold-light' : 'text-red-300')}>
                   {['①', '②', '③', '④'][i]}{game.players[s].name}{'　'}
                 </span>
               ))}</p>
@@ -326,7 +326,7 @@ export default function Guandan() {
                 {game.roundResult.winningTeam === 0 ? '我方' : '对方'}升 {game.roundResult.levelGain} 级
                 （{game.roundResult.winningTeam === 0 ? '+' + game.roundResult.levelGain * 50 : '-50'} 积分）
               </p>
-              <p className="text-slate-400">级牌：我方 {RANK_LABEL[game.level[0]]} · 对方 {RANK_LABEL[game.level[1]]}</p>
+              <p className="text-ivory/60">级牌：我方 {RANK_LABEL[game.level[0]]} · 对方 {RANK_LABEL[game.level[1]]}</p>
               {game.phase === 'matchOver' && (
                 <p className="font-bold text-amber-300">
                   {game.matchWinner === 0 ? '🎉 你方打穿 A 级，赢下整场比赛！+500 积分' : '对方打穿 A 级获胜。-200 积分'}

@@ -26,7 +26,7 @@ function Avatar({ label, tone }: { label: string; tone: 'dealer' | 'player' }) {
     <div className={cn(
       'w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold border-2 shadow-lg',
       tone === 'dealer'
-        ? 'bg-gradient-to-b from-slate-700 to-slate-950 border-amber-500/80 text-amber-200'
+        ? 'bg-gradient-to-b from-ink-light to-[#071007] border-amber-500/80 text-amber-200'
         : 'bg-gradient-to-b from-emerald-700 to-emerald-950 border-emerald-400/80 text-emerald-100',
     )}>
       {label}
@@ -127,17 +127,17 @@ export default function Blackjack() {
   const netResult = game && settled ? totalPayout(game) + (game.insurancePayout ?? 0) : 0;
 
   return (
-    <div className="min-h-dvh bg-[#071007] text-slate-100 flex flex-col">
+    <div className="min-h-dvh bg-[#071007] text-ivory flex flex-col">
       <header className="flex items-center gap-3 px-4 py-2.5 flex-wrap safe-top">
-        <Link to="/" className="text-slate-400 hover:text-slate-200 text-sm flex items-center gap-1">
+        <Link to="/" className="text-ivory/60 hover:text-ivory text-sm flex items-center gap-1">
           <ArrowLeft className="w-4 h-4" />牌桌
         </Link>
-        <Link to="/drills" className="text-slate-400 hover:text-slate-200 text-sm">专项训练</Link>
+        <Link to="/drills" className="text-ivory/60 hover:text-ivory text-sm">专项训练</Link>
         <h1 className="text-base font-bold">21点训练室</h1>
-        <span className={cn('text-xs font-mono', sessionProfit > 0 ? 'text-emerald-400' : sessionProfit < 0 ? 'text-red-400' : 'text-slate-500')}>
+        <span className={cn('text-xs font-mono', sessionProfit > 0 ? 'text-emerald-400' : sessionProfit < 0 ? 'text-red-400' : 'text-ivory/45')}>
           盈亏 {sessionProfit >= 0 ? '+' : ''}{sessionProfit}
         </span>
-        <div className="ml-auto flex items-center gap-3 text-xs text-slate-300">
+        <div className="ml-auto flex items-center gap-3 text-xs text-ivory/80">
           <label className="flex items-center gap-1.5">
             <Switch checked={coachOn} onCheckedChange={setCoachOn} /> 教练
           </label>
@@ -157,8 +157,8 @@ export default function Blackjack() {
             <div className="flex items-center gap-2">
               <Avatar label="庄" tone="dealer" />
               <div className="leading-tight">
-                <p className="text-xs font-semibold text-slate-200">庄家</p>
-                <p className="text-[10px] text-slate-400 font-mono">
+                <p className="text-xs font-semibold text-ivory">庄家</p>
+                <p className="text-[10px] text-ivory/60 font-mono">
                   {settled && dv ? `${dv.value} 点` : '17 点停牌'}
                 </p>
               </div>
@@ -191,7 +191,7 @@ export default function Blackjack() {
           {settled && game?.message && (
             <div className={cn('anim-pop relative left-1/2 mx-auto w-fit -translate-x-1/2 text-sm font-bold px-4 py-1.5 rounded-full text-center mb-2',
               netResult > 0 ? 'bg-emerald-900/80 text-emerald-300' :
-              netResult < 0 ? 'bg-red-900/80 text-red-300' : 'bg-slate-800/90 text-slate-300')}>
+              netResult < 0 ? 'bg-red-900/80 text-red-300' : 'bg-ink-light/90 text-ivory/80')}>
               {game.message}
             </div>
           )}
@@ -212,9 +212,9 @@ export default function Blackjack() {
                       </span>
                     ))}
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-300">
+                  <div className="flex items-center gap-2 text-xs text-ivory/80">
                     <span className={cn('font-mono font-bold',
-                      v.value > 21 ? 'text-red-400' : v.value === 21 ? 'text-amber-300' : 'text-slate-200')}>
+                      v.value > 21 ? 'text-red-400' : v.value === 21 ? 'text-amber-300' : 'text-ivory')}>
                       {game.hands.length > 1 ? `第${i + 1}手 · ` : ''}{v.value} 点{v.soft ? '（软）' : ''}
                     </span>
                     <span className="inline-flex items-center gap-1 text-amber-300/90 font-mono">
@@ -222,7 +222,7 @@ export default function Blackjack() {
                     </span>
                     {h.result && settled && (
                       <span className={cn('font-bold',
-                        h.result === 'win' ? 'text-emerald-400' : h.result === 'push' ? 'text-slate-300' : 'text-red-400')}>
+                        h.result === 'win' ? 'text-emerald-400' : h.result === 'push' ? 'text-ivory/80' : 'text-red-400')}>
                         {{ win: `+${h.payout}`, push: '平局', lose: `${h.payout}`, bust: '爆牌' }[h.result]}
                       </span>
                     )}
@@ -255,7 +255,7 @@ export default function Blackjack() {
                 disabled={profile.points < Math.floor(game.hands[0].bet / 2)}>买保险</Button>
               <Button variant="secondary" className="rounded-full px-6" onClick={() => answerInsurance(false)}>不买</Button>
             </div>
-            {coachOn && <p className="text-[11px] text-slate-400 max-w-md text-center">💡 {INSURANCE_TEACHING.why}</p>}
+            {coachOn && <p className="text-[11px] text-ivory/60 max-w-md text-center">💡 {INSURANCE_TEACHING.why}</p>}
           </div>
         )}
         {insuranceLog && game?.phase !== 'insurance' && (
@@ -290,8 +290,8 @@ export default function Blackjack() {
             </>
           ) : game.phase === 'player' ? (
             <div className="flex items-center gap-2 justify-center flex-wrap">
-              <Button className="rounded-full h-12 px-7 bg-sky-600 hover:bg-sky-500 text-base" onClick={() => act('hit')}>要牌</Button>
-              <Button className="rounded-full h-12 px-7 bg-slate-600 hover:bg-slate-500 text-base" onClick={() => act('stand')}>停牌</Button>
+              <Button className="rounded-full h-12 px-7 bg-gold hover:bg-gold-light text-base" onClick={() => act('hit')}>要牌</Button>
+              <Button className="rounded-full h-12 px-7 bg-ink-light hover:bg-ink text-ivory text-base" onClick={() => act('stand')}>停牌</Button>
               {legalBjActions(game, profile.points).includes('double') && (
                 <Button className="rounded-full h-12 px-6 bg-emerald-600 hover:bg-emerald-500 text-base" onClick={() => act('double')}>双倍</Button>
               )}
@@ -305,33 +305,33 @@ export default function Blackjack() {
         {/* ===== 教练 + 算牌 + 决策记录 ===== */}
         <div className="w-full grid md:grid-cols-2 gap-3 pb-4">
           {advice && (
-            <div className="rounded-xl bg-slate-900/80 border border-emerald-800/60 p-3 text-sm">
+            <div className="rounded-xl bg-ink-card/80 border border-emerald-800/60 p-3 text-sm">
               <p className="font-semibold text-emerald-300 mb-1">🎓 基本策略建议：
                 <span className="text-white font-bold ml-1">{ACTION_LABEL[advice.action]}</span>
               </p>
-              <p className="text-xs text-slate-400 leading-relaxed">{advice.why}</p>
+              <p className="text-xs text-ivory/60 leading-relaxed">{advice.why}</p>
             </div>
           )}
           {showCount && ci && (
-            <div className="rounded-xl bg-slate-900/80 border border-purple-800/60 p-3 text-sm">
+            <div className="rounded-xl bg-ink-card/80 border border-purple-800/60 p-3 text-sm">
               <p className="font-semibold text-purple-300 mb-1">
                 🔢 Hi-Lo：累积 <span className="font-mono text-white">{ci.running > 0 ? '+' : ''}{ci.running}</span>
                 {' '}· 真计数 <span className="font-mono text-white">{ci.trueCount > 0 ? '+' : ''}{ci.trueCount}</span>
                 {' '}· 剩 {ci.decksLeft} 副
               </p>
-              <p className="text-xs text-slate-400 leading-relaxed">{ci.edgeHint}</p>
+              <p className="text-xs text-ivory/60 leading-relaxed">{ci.edgeHint}</p>
             </div>
           )}
           {log.length > 0 && (
-            <div className="rounded-xl bg-slate-900/80 border border-slate-700 p-3 text-sm md:col-span-2">
-              <p className="font-semibold text-slate-300 mb-1">📒 本局决策</p>
+            <div className="rounded-xl bg-ink-card/80 border border-ink-light/60 p-3 text-sm md:col-span-2">
+              <p className="font-semibold text-ivory/80 mb-1">📒 本局决策</p>
               <div className="space-y-1">
                 {log.map((l, i) => (
                   <p key={i} className="text-xs">
                     <span className={l.correct ? 'text-emerald-400' : 'text-red-400'}>
                       {l.correct ? '✅' : '❌'} {game && game.hands.length > 1 ? `第${l.hand + 1}手 ` : ''}{l.action}
                     </span>
-                    <span className="text-slate-400 ml-2">{l.why}</span>
+                    <span className="text-ivory/60 ml-2">{l.why}</span>
                   </p>
                 ))}
               </div>
@@ -339,7 +339,7 @@ export default function Blackjack() {
           )}
         </div>
 
-        <p className="text-[11px] text-slate-600 text-center pb-3">
+        <p className="text-[11px] text-ivory/35 text-center pb-3">
           规则：4 副牌靴 · 庄家所有 17 停牌 · Blackjack 赔 1.5 倍 · 双倍 · 分牌（最多 4 手，分 A 各补一张）· 保险赔 2:1
         </p>
       </main>

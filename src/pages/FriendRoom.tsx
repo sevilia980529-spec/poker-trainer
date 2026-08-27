@@ -149,9 +149,9 @@ export default function FriendRoom() {
   const seatRel = (pid: number) => game ? (pid - youId + game.players.length) % game.players.length : pid;
 
   return (
-    <div className="min-h-dvh bg-[#071007] text-slate-100 flex flex-col">
+    <div className="min-h-dvh bg-[#071007] text-ivory flex flex-col">
       <header className="flex items-center gap-3 px-4 py-2.5 safe-top">
-        <Link to="/" className="text-slate-400 hover:text-slate-200 text-sm flex items-center gap-1">
+        <Link to="/" className="text-ivory/60 hover:text-ivory text-sm flex items-center gap-1">
           <ArrowLeft className="w-4 h-4" />牌桌
         </Link>
         <h1 className="text-base font-bold">好友房</h1>
@@ -170,22 +170,22 @@ export default function FriendRoom() {
       {/* 加入界面 */}
       {phase === 'connect' && (
         <main className="flex-1 flex items-center justify-center p-6">
-          <div className="w-full max-w-sm rounded-xl bg-slate-900 border border-slate-700 p-6 space-y-4">
+          <div className="w-full max-w-sm rounded-xl bg-ink-card border border-ink-light/60 p-6 space-y-4">
             <h2 className="font-bold text-lg">和好友一起训练</h2>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-ivory/60 leading-relaxed">
               把这个网址发给好友，输入同一个房间码即可同桌对练。每人固定 {10000} 分起手，
               分数跨手累积、可以为负（负分玩家每手信用上桌），空位由 AI 自动补齐到 6 人。
             </p>
             <div>
-              <label className="text-xs text-slate-400">你的昵称</label>
+              <label className="text-xs text-ivory/60">你的昵称</label>
               <input value={name} onChange={e => setName(e.target.value)} maxLength={12}
-                className="mt-1 w-full rounded-lg bg-slate-800 border border-slate-600 px-3 py-2 text-sm outline-none focus:border-amber-500"
+                className="mt-1 w-full rounded-lg bg-ink-light border border-ink-light/70 px-3 py-2 text-sm outline-none focus:border-amber-500"
                 placeholder="例如：德州小辣椒" />
             </div>
             <Button className="w-full bg-amber-600 hover:bg-amber-500" onClick={create}>创建房间</Button>
             <div className="flex gap-2">
               <input value={roomCode} onChange={e => setRoomCode(e.target.value.toUpperCase())} maxLength={4}
-                className="flex-1 rounded-lg bg-slate-800 border border-slate-600 px-3 py-2 text-sm outline-none focus:border-amber-500 font-mono tracking-widest"
+                className="flex-1 rounded-lg bg-ink-light border border-ink-light/70 px-3 py-2 text-sm outline-none focus:border-amber-500 font-mono tracking-widest"
                 placeholder="房间码" />
               <Button variant="secondary" onClick={join}>加入房间</Button>
             </div>
@@ -196,29 +196,29 @@ export default function FriendRoom() {
       {/* 大厅 */}
       {phase === 'lobby' && lobby && (
         <main className="flex-1 flex items-center justify-center p-6">
-          <div className="w-full max-w-sm rounded-xl bg-slate-900 border border-slate-700 p-6 space-y-4">
+          <div className="w-full max-w-sm rounded-xl bg-ink-card border border-ink-light/60 p-6 space-y-4">
             <div className="text-center">
-              <p className="text-xs text-slate-400">房间码（发给好友）</p>
+              <p className="text-xs text-ivory/60">房间码（发给好友）</p>
               <p className="text-4xl font-mono font-bold tracking-[0.3em] text-amber-300">{lobby.roomId}</p>
             </div>
             <div className="space-y-1.5">
               {lobby.players.map(p => (
-                <div key={p.seatIdx} className="flex items-center gap-2 rounded-lg bg-slate-800/70 px-3 py-2 text-sm">
-                  <span className={p.connected ? 'text-emerald-400' : 'text-slate-600'}>●</span>
-                  <span className={p.connected ? '' : 'text-slate-500 line-through'}>{p.name}</span>
+                <div key={p.seatIdx} className="flex items-center gap-2 rounded-lg bg-ink-light/70 px-3 py-2 text-sm">
+                  <span className={p.connected ? 'text-emerald-400' : 'text-ivory/35'}>●</span>
+                  <span className={p.connected ? '' : 'text-ivory/45 line-through'}>{p.name}</span>
                   {p.seatIdx === lobby.hostSeat && <Badge className="bg-amber-700 ml-auto">房主</Badge>}
-                  {p.seatIdx === lobby.youSeat && <span className="text-xs text-sky-400 ml-auto">你</span>}
+                  {p.seatIdx === lobby.youSeat && <span className="text-xs text-gold ml-auto">你</span>}
                 </div>
               ))}
             </div>
-            <p className="text-xs text-slate-500">已就绪 {connectedCount}/6 · 空位由 AI 陪练补齐</p>
+            <p className="text-xs text-ivory/45">已就绪 {connectedCount}/6 · 空位由 AI 陪练补齐</p>
             {isHost ? (
               <Button className="w-full bg-amber-600 hover:bg-amber-500" disabled={connectedCount < 2}
                 onClick={() => send({ type: 'start' })}>
                 {connectedCount < 2 ? '等待至少 2 人…' : '开始游戏 ▶'}
               </Button>
             ) : (
-              <p className="text-center text-xs text-slate-400">等待房主开始…</p>
+              <p className="text-center text-xs text-ivory/60">等待房主开始…</p>
             )}
           </div>
         </main>
@@ -255,10 +255,10 @@ export default function FriendRoom() {
                 </div>
                 {game.street === 'handOver' && (
                   <div className="flex flex-col items-center gap-1.5 mt-1">
-                    <p className="text-xs text-slate-200 bg-black/60 rounded-full px-3 py-1 max-w-72 text-center">{game.handOverInfo}</p>
+                    <p className="text-xs text-ivory bg-black/60 rounded-full px-3 py-1 max-w-72 text-center">{game.handOverInfo}</p>
                     {isHost
                       ? <Button size="sm" className="bg-amber-600 hover:bg-amber-500" onClick={() => send({ type: 'start' })}>下一手 ▶</Button>
-                      : <p className="text-[11px] text-slate-400">等待房主开始下一手…</p>}
+                      : <p className="text-[11px] text-ivory/60">等待房主开始下一手…</p>}
                   </div>
                 )}
               </div>
@@ -292,9 +292,9 @@ export default function FriendRoom() {
                     </div>
                     <div className="flex flex-col items-center gap-1">
                     <div className={cn('flex items-center gap-1.5 rounded-full bg-black/70 pl-1 pr-2.5 py-1 border',
-                      game.actingIdx === p.id && game.street !== 'handOver' ? 'border-2 border-gold' : 'border-slate-700',
+                      game.actingIdx === p.id && game.street !== 'handOver' ? 'border-2 border-gold' : 'border-ink-light/60',
                       game.street === 'handOver' && game.winners?.some(w => w.playerId === p.id) && 'anim-winner border-amber-300')}>
-                      <span className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-xs relative font-bold">
+                      <span className="w-7 h-7 rounded-full bg-ink-light flex items-center justify-center text-xs relative font-bold">
                         {p.name.slice(0, 1)}
                         {game.dealerIdx === p.id && (
                           <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 text-[8px] text-black font-bold flex items-center justify-center">D</span>
@@ -305,7 +305,7 @@ export default function FriendRoom() {
                         <div className="text-[10px] font-mono">
                           <span className="text-amber-300">{p.chips}</span>
                           {score !== undefined && (
-                            <span className={cn('ml-1', score < 0 ? 'text-red-400' : 'text-slate-400')}>
+                            <span className={cn('ml-1', score < 0 ? 'text-red-400' : 'text-ivory/60')}>
                               / {score}
                             </span>
                           )}
@@ -330,7 +330,7 @@ export default function FriendRoom() {
                     </div>
                     {p.lastAction && (
                       <div key={`${p.id}-${p.lastAction}-${game.actingIdx}`}
-                        className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] bg-sky-600/90 rounded-full px-2 py-0.5 whitespace-nowrap anim-pop">
+                        className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] bg-gold/90 rounded-full px-2 py-0.5 whitespace-nowrap anim-pop">
                         {p.lastAction}
                       </div>
                     )}
@@ -343,12 +343,12 @@ export default function FriendRoom() {
                 <div className="absolute left-1/2 -translate-x-1/2 bottom-[-4%] flex flex-col items-center gap-1">
                   {game.players[youId].lastAction && (
                     <div key={`hero-${game.players[youId].lastAction}-${game.actingIdx}`}
-                      className="text-[10px] bg-sky-600/90 rounded-full px-2 py-0.5 whitespace-nowrap anim-pop">
+                      className="text-[10px] bg-gold/90 rounded-full px-2 py-0.5 whitespace-nowrap anim-pop">
                       {game.players[youId].lastAction}
                     </div>
                   )}
                   <div className={cn('flex items-center gap-1.5 rounded-full bg-black/70 pl-1 pr-2.5 py-1 border',
-                    game.actingIdx === youId && game.street !== 'handOver' ? 'border-2 border-gold' : 'border-slate-700',
+                    game.actingIdx === youId && game.street !== 'handOver' ? 'border-2 border-gold' : 'border-ink-light/60',
                     game.street === 'handOver' && game.winners?.some(w => w.playerId === youId) && 'anim-winner border-amber-300')}>
                     <span className="w-7 h-7 rounded-full bg-gradient-to-br from-gold to-amber-700 flex items-center justify-center text-xs relative font-bold text-black">
                       {game.players[youId].name.slice(0, 1)}
@@ -361,7 +361,7 @@ export default function FriendRoom() {
                       <div className="text-[10px] font-mono">
                         <span className="text-amber-300">{game.players[youId].chips}</span>
                         {scores[youId] !== undefined && (
-                          <span className={cn('ml-1', scores[youId] < 0 ? 'text-red-400' : 'text-slate-400')}>/ {scores[youId]}</span>
+                          <span className={cn('ml-1', scores[youId] < 0 ? 'text-red-400' : 'text-ivory/60')}>/ {scores[youId]}</span>
                         )}
                       </div>
                     </div>
@@ -387,7 +387,7 @@ export default function FriendRoom() {
               ))}
             </div>
             {scores[youId] !== undefined && (
-              <span className={cn('text-[11px] font-mono', scores[youId] < 0 ? 'text-red-400' : 'text-slate-400')}>
+              <span className={cn('text-[11px] font-mono', scores[youId] < 0 ? 'text-red-400' : 'text-ivory/60')}>
                 我的分数 {scores[youId]}{scores[youId] <= 0 && '（信用上桌）'}
               </span>
             )}
@@ -405,10 +405,10 @@ export default function FriendRoom() {
                     <Button className="rounded-full h-12 px-6 bg-red-700 hover:bg-red-600 text-base" onClick={() => act('fold')}>弃牌</Button>
                   )}
                   {la.canCheck && (
-                    <Button className="rounded-full h-12 px-6 bg-slate-600 hover:bg-slate-500 text-base" onClick={() => act('check')}>过牌</Button>
+                    <Button className="rounded-full h-12 px-6 bg-ink-light hover:bg-ink text-ivory text-base" onClick={() => act('check')}>过牌</Button>
                   )}
                   {la.canCall && (
-                    <Button className="rounded-full h-12 px-6 bg-blue-600 hover:bg-blue-500 text-base" onClick={() => act('call')}>
+                    <Button className="rounded-full h-12 px-6 bg-felt hover:bg-felt-light text-base" onClick={() => act('call')}>
                       跟注 {la.callAmount}
                     </Button>
                   )}
@@ -421,7 +421,7 @@ export default function FriendRoom() {
                 </div>
               </div>
             ) : (
-              game.street !== 'handOver' && <p className="text-[11px] text-slate-500 h-6">等待其他玩家行动…</p>
+              game.street !== 'handOver' && <p className="text-[11px] text-ivory/45 h-6">等待其他玩家行动…</p>
             )}
           </footer>
 
