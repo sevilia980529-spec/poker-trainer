@@ -8,7 +8,7 @@ import { getLevelProgress, type Level } from '../lib/level';
 export interface Account {
   id: string;
   nickname: string;
-  avatar: string; // emoji 或 dataURL
+  avatar: string; // emoji / dataURL / 图片路径(/avatars/x.png)
   xp: number;
   lastDailyCheckin: number;
   consecutiveLoginDays: number;
@@ -39,7 +39,12 @@ interface UserState {
   logout: () => void;
 }
 
-export const AVATARS = ['😎', '🦊', '🐯', '🦁', '🐼', '🦅', '🐺', '🃏', '👑', '🤠', '🧙', '🥷'];
+// 头像预设：生成的头像图片，统一放在 public/avatars/ 下
+export const AVATARS = [
+  '/avatars/1.png', '/avatars/2.png', '/avatars/3.png', '/avatars/4.png',
+  '/avatars/5.png', '/avatars/6.png', '/avatars/7.png', '/avatars/8.png',
+  '/avatars/9.png', '/avatars/10.png', '/avatars/11.png', '/avatars/12.png',
+];
 
 const DAILY_XP = 50;
 
@@ -87,7 +92,7 @@ export const useUserStore = create<UserState>()(
 
       return {
         nickname: '新玩家',
-        avatar: '😎',
+        avatar: '/avatars/1.png',
         xp: 0,
         lastDailyCheckin: 0,
         consecutiveLoginDays: 0,
@@ -116,7 +121,7 @@ export const useUserStore = create<UserState>()(
           const acc: Account = {
             id,
             nickname: nickname.trim() || '新玩家',
-            avatar: avatar || '😎',
+            avatar: avatar || '/avatars/1.png',
             xp: 0,
             lastDailyCheckin: 0,
             consecutiveLoginDays: 0,
@@ -147,7 +152,7 @@ export const useUserStore = create<UserState>()(
               activeId: next ? next.id : null,
               ...(next
                 ? mirror(next)
-                : { nickname: '新玩家', avatar: '😎', xp: 0, lastDailyCheckin: 0, consecutiveLoginDays: 0 }),
+                : { nickname: '新玩家', avatar: '/avatars/1.png', xp: 0, lastDailyCheckin: 0, consecutiveLoginDays: 0 }),
             };
           });
         },
@@ -164,7 +169,7 @@ export const useUserStore = create<UserState>()(
           const acc: Account = {
             id: genId(),
             nickname: persisted.nickname || '新玩家',
-            avatar: persisted.avatar || '😎',
+            avatar: persisted.avatar || '/avatars/1.png',
             xp: persisted.xp || 0,
             lastDailyCheckin: persisted.lastDailyCheckin || 0,
             consecutiveLoginDays: persisted.consecutiveLoginDays || 0,
