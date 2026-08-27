@@ -9,9 +9,12 @@ import Blackjack from './pages/Blackjack'
 import FriendRoom from './pages/FriendRoom'
 import Profile from './pages/Profile'
 import LoadingScreen from './components/common/LoadingScreen'
+import AccountGate from './components/AccountGate'
+import { useUserStore } from './store/userStore'
 
 export default function App() {
   const [booting, setBooting] = useState(true)
+  const activeId = useUserStore((s) => s.activeId)
 
   useEffect(() => {
     const t = setTimeout(() => setBooting(false), 900)
@@ -19,6 +22,7 @@ export default function App() {
   }, [])
 
   if (booting) return <LoadingScreen />
+  if (!activeId) return <AccountGate />
 
   return (
     <Routes>

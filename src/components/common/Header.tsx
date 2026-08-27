@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router';
 import { useUserStore, useLevel } from '../../store/userStore';
 import { loadProfile } from '../../store/points';
 import LevelBadge from './LevelBadge';
+import Avatar from '../Avatar';
 
 export default function Header() {
   const navigate = useNavigate();
@@ -17,8 +18,8 @@ export default function Header() {
           onClick={() => navigate('/profile')}
           className="flex items-center gap-2.5 active:scale-95 transition-transform"
         >
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold to-gold-dark flex items-center justify-center text-xl shadow-md">
-            {avatar}
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold to-gold-dark flex items-center justify-center shadow-md overflow-hidden">
+            <Avatar value={avatar} size={40} />
           </div>
           <div className="flex flex-col items-start">
             <span className="text-sm font-semibold text-ivory truncate max-w-[80px]">

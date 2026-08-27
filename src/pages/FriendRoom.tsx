@@ -5,6 +5,7 @@ import type { GameState, ActionType } from '../engine/game';
 import { legalActions, STREET_NAME } from '../engine/game';
 import { cardToString } from '../engine/cards';
 import { loadProfile, saveProfile } from '../store/points';
+import { useUserStore } from '../store/userStore';
 import { PlayingCard } from '../components/PlayingCard';
 import SettlementModal from '../components/SettlementModal';
 import { Chip, ChipStack } from '../components/ChipStack';
@@ -434,7 +435,7 @@ export default function FriendRoom() {
               info={game.handOverInfo ?? ''}
               players={game.players.map(p => ({
                 name: p.name,
-                avatar: p.id === youId ? '⭐' : p.name.slice(0, 1),
+                avatar: p.id === youId ? useUserStore.getState().avatar : p.name.slice(0, 1),
                 hole: p.folded ? [] : p.hole,
                 folded: p.folded,
                 winner: !!game.winners?.some(w => w.playerId === p.id),

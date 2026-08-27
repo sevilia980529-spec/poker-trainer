@@ -18,6 +18,7 @@ import { AnimatedNumber } from '../components/AnimatedNumber';
 import { playDeal, playChips, playClick, playFold, playWin, playLose, playShuffle, playPotSweep, isMuted, setMuted } from '../lib/sound';
 import { loadTableConfig, DIFFICULTY_STYLES, BLIND_OPTIONS } from '../lib/tableConfig';
 import { useUserStore } from '../store/userStore';
+import Avatar from '../components/Avatar';
 import { CoachPanel } from '../components/CoachPanel';
 import { ReviewList } from '../components/ReviewList';
 import { RulesGuideDialog } from '../components/RulesGuide';
@@ -515,7 +516,7 @@ export default function PokerTrainer() {
                   game.players[0].lastAction?.includes('全下') && game.actingIdx !== 0 && 'anim-allin')}>
                   <span className={cn('w-7 h-7 rounded-full bg-gradient-to-br from-gold to-gold-dark flex items-center justify-center text-sm relative',
                     game.actingIdx === 0 && game.street !== 'handOver' ? 'anim-ring' : 'anim-breathe')}>
-                    {avatar}
+                    <Avatar value={avatar} size={28} />
                     {game.dealerIdx === 0 && (
                       <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-gold text-[8px] text-black font-bold flex items-center justify-center">D</span>
                     )}
@@ -554,7 +555,7 @@ export default function PokerTrainer() {
           {/* 我的信息行：头像 + 昵称 + 位置 | 筹码 */}
           <div className="w-full max-w-lg flex items-center justify-between text-xs px-4">
             <div className="flex items-center gap-1.5">
-              <span className="text-base">{avatar}</span>
+              <Avatar value={avatar} size={20} />
               <span className="text-ivory font-medium">{nickname}</span>
               <span className="text-gold/80 font-bold">
                 · {heroPositionName(game, 0)}{game.dealerIdx === 0 && ' · 庄家'}

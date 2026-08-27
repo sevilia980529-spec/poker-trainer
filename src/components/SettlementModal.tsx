@@ -2,6 +2,7 @@
 import Modal from './common/Modal';
 import Button from './common/Button';
 import { PlayingCard } from './PlayingCard';
+import Avatar from './Avatar';
 import type { Card } from '../engine/cards';
 
 export interface SettlePlayer {
@@ -56,7 +57,7 @@ export default function SettlementModal({
               }`}
             >
               <div className="flex items-center gap-2">
-                <span className="text-lg">{p.avatar}</span>
+                <Avatar value={p.avatar} size={22} />
                 <div>
                   <div className="text-sm text-ivory">
                     {p.name}

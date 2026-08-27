@@ -3,8 +3,10 @@ import PageHeader from '../components/common/PageHeader';
 import LevelBadge from '../components/common/LevelBadge';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
+import Avatar from '../components/Avatar';
+import AccountForm from '../components/AccountForm';
 import { ToastContainer, useToast } from '../components/common/Toast';
-import { useUserStore, useLevel, AVATARS } from '../store/userStore';
+import { useUserStore, useLevel } from '../store/userStore';
 import { loadProfile, saveProfile, defaultProfile, claimRelief, DAILY_BONUS, BUY_IN } from '../store/points';
 import { loadDrillStats } from '../store/drillStats';
 
@@ -13,15 +15,24 @@ export default function Profile() {
   const avatar = useUserStore((s) => s.avatar);
   const xp = useUserStore((s) => s.xp);
   const consecutive = useUserStore((s) => s.consecutiveLoginDays);
-  const setNickname = useUserStore((s) => s.setNickname);
-  const setAvatar = useUserStore((s) => s.setAvatar);
+  const accounts = useUserStore((s) => s.accounts);
+  const activeId = useUserStore((s) => s.activeId);
+  const updateAccount = useUserStore((s) => s.updateAccount);
+  const createAccount = useUserStore((s) => s.createAccount);
+  const switchAccount = useUserStore((s) => s.switchAccount);
+  const deleteAccount = useUserStore((s) => s.deleteAccount);
+  const logout = useUserStore((s) => s.logout);
   const { level, nextLevel, progress, xpToNext } = useLevel();
   const toast = useToast();
 
   const [profile, setProfile] = useState(loadProfile);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(nickname);
-  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [showSwitch, setShowSwitch] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const drillStats = loadDrillStats();
 
@@ -36,7 +47,7 @@ export default function Profile() {
     : null;
 
   const saveName = () => {
-    setNickname(nameInput);
+    updateAccount(activeId!, { nickname: nameInput });
     setEditingName(false);
     toast.success('昵称已更新');
   };
@@ -66,10 +77,10 @@ export default function Profile() {
         <section className="glass rounded-2xl p-5 animate-fade-up">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => setShowAvatarPicker(true)}
-              className="w-16 h-16 rounded-full bg-gradient-to-br from-gold to-gold-dark flex items-center justify-center text-3xl shadow-md active:scale-95 transition-transform"
+              onClick={() => setShowEdit(true)}
+              className="w-16 h-16 rounded-full bg-gradient-to-br from-gold to-gold-dark flex items-center justify-center shadow-md overflow-hidden active:scale-95 transition-transform"
             >
-              {avatar}
+              <Avatar value={avatar} size={64} />
             </button>
             <div className="flex-1">
               {editingName ? (
@@ -151,6 +162,26 @@ export default function Profile() {
           </div>
         </section>
 
+        {/* 账号管理 */}
+        <section className="glass rounded-2xl p-5 animate-fade-up" style={{ animationDelay: '0.12s' }}>
+          <h3 className="text-sm font-semibold text-ivory/80 mb-3">账号</h3>
+          <div className="space-y-2">
+            <div className="flex items-center gap-3 bg-ink-light/50 rounded-xl p-3">
+              <Avatar value={avatar} size={36} />
+              <div className="flex-1">
+                <div className="text-sm text-ivory font-medium">{nickname}</div>
+                <div className="text-xs text-ivory/40">当前账号 · 共 {accounts.length} 个</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button fullWidth variant="ghost" onClick={() => setShowSwitch(true)}>切换账号</Button>
+              <Button fullWidth variant="ghost" onClick={() => setShowAdd(true)}>添加账号</Button>
+              <Button fullWidth variant="ghost" onClick={() => setConfirmLogout(true)}>退出登录</Button>
+              <Button fullWidth variant="danger" onClick={() => setConfirmDelete(true)}>删除本账号</Button>
+            </div>
+          </div>
+        </section>
+
         {/* 操作 */}
         <section className="space-y-3 animate-fade-up" style={{ animationDelay: '0.15s' }}>
           {profile.points < BUY_IN && (
@@ -164,23 +195,68 @@ export default function Profile() {
         </section>
 
         <div className="text-center text-xs text-ivory/30 pt-2">
-          数据保存在本机浏览器 · 清缓存会丢失
+          账号数据保存在本机浏览器 · 清缓存会丢失
         </div>
       </main>
 
-      {/* 头像选择 */}
-      <Modal open={showAvatarPicker} onClose={() => setShowAvatarPicker(false)} title="选择头像">
-        <div className="grid grid-cols-4 gap-3">
-          {AVATARS.map((a) => (
+      {/* 编辑资料（昵称 + 头像上传） */}
+      <Modal open={showEdit} onClose={() => setShowEdit(false)} title="编辑资料">
+        <AccountForm
+          submitLabel="保存"
+          initialNickname={nickname}
+          initialAvatar={avatar}
+          onSubmit={(n, a) => {
+            updateAccount(activeId!, { nickname: n, avatar: a });
+            setShowEdit(false);
+            toast.success('资料已更新');
+          }}
+        />
+      </Modal>
+
+      {/* 切换账号 */}
+      <Modal open={showSwitch} onClose={() => setShowSwitch(false)} title="切换账号">
+        <div className="space-y-2">
+          {accounts.map((acc) => (
             <button
-              key={a}
-              onClick={() => { setAvatar(a); setShowAvatarPicker(false); }}
-              className={`text-3xl p-3 rounded-xl transition-all active:scale-95
-                ${a === avatar ? 'bg-gold/20 ring-2 ring-gold' : 'bg-ink-light hover:bg-ink'}`}
+              key={acc.id}
+              onClick={() => { switchAccount(acc.id); setShowSwitch(false); }}
+              className={`w-full flex items-center gap-3 bg-ink-light rounded-xl p-3 active:scale-95 transition-transform ${
+                acc.id === activeId ? 'ring-2 ring-gold' : ''
+              }`}
             >
-              {a}
+              <Avatar value={acc.avatar} size={36} />
+              <span className="text-ivory font-medium flex-1 text-left truncate">{acc.nickname}</span>
+              {acc.id === activeId && <span className="text-xs text-gold">当前</span>}
             </button>
           ))}
+        </div>
+      </Modal>
+
+      {/* 添加账号 */}
+      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="添加账号">
+        <AccountForm
+          submitLabel="创建并切换"
+          onSubmit={(n, a) => { createAccount(n, a); setShowAdd(false); toast.success('已创建账号'); }}
+        />
+      </Modal>
+
+      {/* 退出登录确认 */}
+      <Modal open={confirmLogout} onClose={() => setConfirmLogout(false)} title="退出登录？">
+        <p className="text-sm text-ivory/80 mb-4">退出后将返回账号选择页，本机账号数据不会删除。</p>
+        <div className="flex gap-3">
+          <Button fullWidth variant="ghost" onClick={() => setConfirmLogout(false)}>取消</Button>
+          <Button fullWidth variant="danger" onClick={() => { logout(); setConfirmLogout(false); }}>退出</Button>
+        </div>
+      </Modal>
+
+      {/* 删除账号确认 */}
+      <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} title="删除本账号？">
+        <p className="text-sm text-ivory/80 mb-4">
+          将永久删除「{nickname}」的昵称、头像与段位 XP（战绩钱包数据保留在本地）。此操作不可撤销。
+        </p>
+        <div className="flex gap-3">
+          <Button fullWidth variant="ghost" onClick={() => setConfirmDelete(false)}>取消</Button>
+          <Button fullWidth variant="danger" onClick={() => { deleteAccount(activeId!); setConfirmDelete(false); toast.info('账号已删除'); }}>确认删除</Button>
         </div>
       </Modal>
 
