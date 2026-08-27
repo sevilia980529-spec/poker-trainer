@@ -14,6 +14,7 @@ import {
 } from '../store/points';
 import { PlayingCard } from '../components/PlayingCard';
 import { Chip, ChipStack } from '../components/ChipStack';
+import { AnimatedNumber } from '../components/AnimatedNumber';
 import { playDeal, playChips, playClick, playFold, playWin, playLose, playShuffle, playPotSweep, isMuted, setMuted } from '../lib/sound';
 import { loadTableConfig, DIFFICULTY_STYLES, BLIND_OPTIONS } from '../lib/tableConfig';
 import { useUserStore } from '../store/userStore';
@@ -411,11 +412,11 @@ export default function PokerTrainer() {
                 )}
                 <div key={game.players.reduce((s, p) => s + p.handBet, 0)}
                   className="text-gold font-bold text-xs sm:text-sm bg-gold/25 backdrop-blur-sm border border-gold/60 px-3 py-0.5 rounded-full anim-pot num">
-                  底池 {game.players.reduce((s, p) => s + p.handBet, 0)} · {STREET_NAME[game.street]}
+                  底池 <AnimatedNumber value={game.players.reduce((s, p) => s + p.handBet, 0)} /> · {STREET_NAME[game.street]}
                 </div>
-                <div className="flex gap-1 sm:gap-1.5">
+                <div className="flex gap-1 sm:gap-1.5" style={{ perspective: 700 }}>
                   {game.community.map((c, i) => (
-                    <span key={cardToString(c)} className="anim-flip" style={{ animationDelay: `${(i % 3) * 90}ms` }}>
+                    <span key={cardToString(c)} className="anim-reveal" style={{ animationDelay: `${(i % 3) * 90}ms` }}>
                       <PlayingCard card={c} />
                     </span>
                   ))}
@@ -443,13 +444,15 @@ export default function PokerTrainer() {
                 <div key={p.id} className={cn('absolute flex gap-1',
                   corner ? (slot === 0 ? 'flex-row-reverse items-center' : 'flex-row items-center')
                     : slot === 2 ? 'flex-col-reverse items-center' : 'flex-col items-center',
-                  AI_SEAT_POS[slot], p.folded && 'opacity-40')}>
+                  AI_SEAT_POS[slot],
+                  p.folded && 'opacity-40 grayscale',
+                  game.actingIdx !== p.id && p.lastAction?.includes('全下') && 'anim-allin')}>
                   <div className="flex -space-x-3">
                     {p.hole.map((c, j) => {
                       const revealed = game.street === 'handOver' && !p.folded && !!game.winners;
                       return (
                         <span key={`${handNumber}-${p.id}-${j}-${revealed}`}
-                          className={revealed ? 'anim-flip' : 'anim-deal'}
+                          className={p.folded ? 'anim-fold' : revealed ? 'anim-flip' : 'anim-deal'}
                           style={{ animationDelay: revealed ? `${j * 120}ms` : `${(i * 2 + j) * 90}ms` }}>
                           <PlayingCard card={c} small faceDown={!revealed} />
                         </span>
@@ -460,7 +463,8 @@ export default function PokerTrainer() {
                   <div className={cn('flex items-center gap-1.5 rounded-full bg-black/70 pl-1 pr-2.5 py-1 border',
                     game.actingIdx === p.id ? 'border-2 border-gold' : 'border-gold/20',
                     game.street === 'handOver' && game.winners?.some(w => w.playerId === p.id) && 'anim-winner border-gold')}>
-                    <span className="w-7 h-7 rounded-full bg-ink-light flex items-center justify-center text-sm relative">
+                    <span className={cn('w-7 h-7 rounded-full bg-ink-light flex items-center justify-center text-sm relative',
+                      game.actingIdx === p.id ? 'anim-ring' : 'anim-breathe')}>
                       {STYLE_EMOJI[p.style] ?? '🤖'}
                       {game.dealerIdx === p.id && (
                         <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-gold text-[8px] text-black font-bold flex items-center justify-center">D</span>
@@ -468,7 +472,7 @@ export default function PokerTrainer() {
                     </span>
                     <div className="leading-tight">
                       <div className="text-[11px] font-semibold whitespace-nowrap">{p.name}</div>
-                      <div className="text-[10px] text-gold font-mono">{p.chips}</div>
+                      <div className="text-[10px] text-gold font-mono"><AnimatedNumber value={p.chips} /></div>
                     </div>
                   </div>
                   {game.actingIdx === p.id && game.street !== 'handOver' && (
@@ -507,8 +511,10 @@ export default function PokerTrainer() {
                 )}
                 <div className={cn('flex items-center gap-1.5 rounded-full bg-black/70 pl-1 pr-2.5 py-1 border',
                   game.actingIdx === 0 && game.street !== 'handOver' ? 'border-2 border-gold' : 'border-gold/20',
-                  game.street === 'handOver' && game.winners?.some(w => w.playerId === 0) && 'anim-winner border-gold')}>
-                  <span className="w-7 h-7 rounded-full bg-gradient-to-br from-gold to-gold-dark flex items-center justify-center text-sm relative">
+                  game.street === 'handOver' && game.winners?.some(w => w.playerId === 0) && 'anim-winner border-gold',
+                  game.players[0].lastAction?.includes('全下') && game.actingIdx !== 0 && 'anim-allin')}>
+                  <span className={cn('w-7 h-7 rounded-full bg-gradient-to-br from-gold to-gold-dark flex items-center justify-center text-sm relative',
+                    game.actingIdx === 0 && game.street !== 'handOver' ? 'anim-ring' : 'anim-breathe')}>
                     {avatar}
                     {game.dealerIdx === 0 && (
                       <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-gold text-[8px] text-black font-bold flex items-center justify-center">D</span>
@@ -516,15 +522,15 @@ export default function PokerTrainer() {
                   </span>
                   <div className="leading-tight">
                     <div className="text-[11px] font-semibold whitespace-nowrap">{nickname}</div>
-                    <div className="text-[10px] text-gold font-mono num">{game.players[0].chips}</div>
+                    <div className="text-[10px] text-gold font-mono num"><AnimatedNumber value={game.players[0].chips} /></div>
                   </div>
                 </div>
-                {game.players[0].streetBet > 0 && (
-                  <span key={`hero-bet-${game.players[0].streetBet}`} className="anim-chip inline-flex items-center gap-1 bg-black/70 rounded-full pl-0.5 pr-1.5 py-0.5">
-                    <Chip size={15} />
-                    <span className="text-[10px] font-mono text-gold font-bold">{game.players[0].streetBet}</span>
-                  </span>
-                )}
+                  {game.players[0].streetBet > 0 && (
+                    <span key={`hero-bet-${game.players[0].streetBet}`} className="anim-chip inline-flex items-center gap-1 bg-black/70 rounded-full pl-0.5 pr-1.5 py-0.5">
+                      <Chip size={15} />
+                      <span className="text-[10px] font-mono text-gold font-bold"><AnimatedNumber value={game.players[0].streetBet} /></span>
+                    </span>
+                  )}
               </div>
             </>
           )}
@@ -538,7 +544,7 @@ export default function PokerTrainer() {
           <div className="flex flex-col items-center gap-1">
             <div className="flex gap-2">
               {game.players[0].hole.map((c, i) => (
-                <span key={`${handNumber}-${cardToString(c)}`} className="anim-deal" style={{ animationDelay: `${i * 130}ms` }}>
+                <span key={`${handNumber}-${cardToString(c)}`} className={game.players[0].folded ? 'anim-fold' : 'anim-deal'} style={{ animationDelay: `${i * 130}ms` }}>
                   <PlayingCard card={c} />
                 </span>
               ))}
@@ -554,7 +560,7 @@ export default function PokerTrainer() {
                 · {heroPositionName(game, 0)}{game.dealerIdx === 0 && ' · 庄家'}
               </span>
             </div>
-            <div className="text-gold font-bold num">💰 {game.players[0].chips.toLocaleString()}</div>
+            <div className="text-gold font-bold num">💰 <AnimatedNumber value={game.players[0].chips} /></div>
           </div>
 
           {/* 教练建议条（点开看详情） */}
@@ -592,8 +598,8 @@ export default function PokerTrainer() {
 
           {/* 结算横幅 */}
           {handResult && game.street === 'handOver' && (
-            <div className={cn('text-sm font-bold px-4 py-1 rounded-full',
-              handResult.delta >= 0 ? 'bg-emerald-900/80 text-emerald-300' : 'bg-red-900/80 text-red-300')}>
+            <div className={cn('text-base font-bold px-5 py-1.5 rounded-full anim-banner',
+              handResult.delta >= 0 ? 'bg-emerald-900/80 text-emerald-300 shadow-[0_0_18px_rgba(16,185,129,0.4)]' : 'bg-red-900/80 text-red-300 shadow-[0_0_18px_rgba(229,57,53,0.4)]')}>
               {handResult.delta >= 0 ? '+' : ''}{handResult.delta}
             </div>
           )}
@@ -603,35 +609,35 @@ export default function PokerTrainer() {
             <div className="w-full max-w-lg flex flex-col items-center gap-2">
               {showRaise && la!.canRaise && (
                 <div className="flex items-center gap-3 w-full px-4">
-                  <Slider className="flex-1" min={la!.minRaiseTo} max={la!.maxRaiseTo} step={10}
+                  <Slider className="brand-slider flex-1" min={la!.minRaiseTo} max={la!.maxRaiseTo} step={10}
                     value={[raiseAmt]} onValueChange={v => setRaiseAmt(v[0])} />
-                  <span className="font-mono font-bold text-gold w-16 text-right">{raiseAmt}</span>
+                  <AnimatedNumber value={raiseAmt} className="font-mono font-bold text-gold w-16 text-right inline-block" />
                 </div>
               )}
               <div className="flex items-center gap-2 justify-center">
                 {(la!.canFold || la!.canCall) && (
-                  <Button className="rounded-xl h-12 px-6 bg-gradient-to-b from-danger to-[#c62828] hover:from-[#ef5350] hover:to-danger text-white shadow-[0_6px_16px_rgba(229,57,53,0.4)] text-base font-semibold" onClick={() => heroAct('fold')}>弃牌</Button>
+                  <Button className="btn-action rounded-full h-12 px-6 bg-gradient-to-b from-danger to-[#c62828] hover:from-[#ef5350] hover:to-danger text-white shadow-[0_6px_16px_rgba(229,57,53,0.4)] text-base font-semibold" onClick={() => heroAct('fold')}>弃牌</Button>
                 )}
                 {la!.canCheck && (
-                  <Button className="rounded-xl h-12 px-6 bg-ink-light hover:bg-ink-card border border-gold-dark/50 text-ivory text-base font-semibold shadow-md" onClick={() => heroAct('check')}>过牌</Button>
+                  <Button className="btn-action rounded-full h-12 px-6 bg-gradient-to-b from-emerald-700/90 to-emerald-950 border border-emerald-500/60 text-emerald-100 text-base font-semibold shadow-md" onClick={() => heroAct('check')}>过牌</Button>
                 )}
                 {la!.canCall && (
-                  <Button className="rounded-xl h-12 px-6 bg-ink-light hover:bg-ink-card border border-gold-dark/50 text-ivory text-base font-semibold shadow-md" onClick={() => heroAct('call')}>
-                    跟注 {la!.callAmount}
+                  <Button className="btn-action rounded-full h-12 px-6 bg-gradient-to-b from-emerald-700/90 to-emerald-950 border border-emerald-500/60 text-emerald-100 text-base font-semibold shadow-md" onClick={() => heroAct('call')}>
+                    跟注 <span className="text-lg font-extrabold">{la!.callAmount}</span>
                   </Button>
                 )}
                 {la!.canRaise && !showRaise && (
-                  <Button className="rounded-xl h-12 px-6 bg-gradient-to-b from-gold-light to-gold hover:from-gold hover:to-gold-dark text-ink text-base font-bold" onClick={() => setShowRaise(true)}>
+                  <Button className="btn-action rounded-full h-12 px-6 bg-gradient-to-b from-gold-light to-gold hover:from-gold hover:to-gold-dark text-ink text-base font-bold shadow-[0_6px_16px_rgba(212,168,87,0.4)]" onClick={() => setShowRaise(true)}>
                     加注
                   </Button>
                 )}
                 {la!.canRaise && showRaise && (
                   <>
-                    <Button className="rounded-xl h-12 px-5 bg-gradient-to-b from-gold-light to-gold hover:from-gold hover:to-gold-dark text-ink text-base font-bold"
+                    <Button className="btn-action rounded-full h-12 px-5 text-base font-bold text-white shadow-[0_6px_18px_rgba(192,38,211,0.45)] bg-gradient-to-b from-fuchsia-600 to-purple-900"
                       onClick={() => heroAct(raiseAmt >= la!.maxRaiseTo ? 'allin' : game.currentBet > 0 ? 'raise' : 'bet', raiseAmt)}>
                       {raiseAmt >= la!.maxRaiseTo ? `全下 ${raiseAmt}` : `加到 ${raiseAmt}`}
                     </Button>
-                    <Button variant="ghost" className="rounded-xl text-ivory/60" onClick={() => setShowRaise(false)}>收起</Button>
+                    <Button variant="ghost" className="btn-action rounded-full text-ivory/60" onClick={() => setShowRaise(false)}>收起</Button>
                   </>
                 )}
               </div>

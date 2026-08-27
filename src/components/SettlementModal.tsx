@@ -33,7 +33,7 @@ export default function SettlementModal({
 }: SettlementModalProps) {
   return (
     <Modal open={open} onClose={onClose} title={heroWon ? '🎉 胜利！' : '本局结束'} showClose={false}>
-      <div className="space-y-4">
+      <div key={open ? 'settle-open' : 'settle-closed'} className="space-y-4 anim-shake">
         {/* 盈亏 */}
         <div className="text-center">
           <div className={`text-3xl font-bold num ${delta !== null && delta > 0 ? 'text-success' : delta !== null && delta < 0 ? 'text-danger' : 'text-ivory'}`}>
@@ -52,7 +52,7 @@ export default function SettlementModal({
             <div
               key={i}
               className={`flex items-center justify-between p-2 rounded-lg ${
-                p.winner ? 'bg-success/10 border border-success/30' : 'bg-ink-light'
+                p.winner ? 'bg-success/10 border border-success/30 anim-winner shadow-[0_0_16px_rgba(212,168,87,0.3)]' : 'bg-ink-light'
               }`}
             >
               <div className="flex items-center gap-2">
