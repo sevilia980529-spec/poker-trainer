@@ -3,6 +3,7 @@ import Modal from './common/Modal';
 import Button from './common/Button';
 import { PlayingCard } from './PlayingCard';
 import Avatar from './Avatar';
+import Icon from './Icon';
 import type { Card } from '../engine/cards';
 
 export interface SettlePlayer {
@@ -74,7 +75,7 @@ export default function SettlementModal({
               </div>
               {p.winner && (
                 <span className="text-success font-bold text-sm">
-                  👑 {p.winAmount ? `+${p.winAmount.toLocaleString()}` : '赢'}
+                  <Icon e="👑" size={14} className="align-middle" /> {p.winAmount ? `+${p.winAmount.toLocaleString()}` : '赢'}
                 </span>
               )}
             </div>
@@ -88,7 +89,7 @@ export default function SettlementModal({
         </div>
         {onReview && (
           <Button fullWidth variant="ghost" onClick={onReview} className="!mt-1">
-            📊 复盘本手
+            <Icon e="📊" size={14} className="align-middle" /> 复盘本手
           </Button>
         )}
       </div>

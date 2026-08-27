@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import Icon from '../Icon';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
@@ -68,7 +69,7 @@ export function ToastContainer() {
           `}
           onClick={() => dismiss(toast.id)}
         >
-          <span className="text-lg font-bold">{ICONS[toast.type]}</span>
+          <Icon e={ICONS[toast.type]} size={16} className="font-bold" />
           <span className="text-sm font-medium text-ivory">{toast.message}</span>
         </div>
       ))}

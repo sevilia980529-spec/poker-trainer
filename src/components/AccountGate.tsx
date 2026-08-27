@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useUserStore } from '../store/userStore';
 import AccountForm from '../components/AccountForm';
 import Avatar from './Avatar';
+import Icon from './Icon';
 
 // 首启动 / 退出登录后的账号门：已存在账号则选择进入，否则创建新账号
 export default function AccountGate() {
@@ -12,8 +13,8 @@ export default function AccountGate() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-ink px-6 py-10">
-      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-gold to-gold-dark flex items-center justify-center text-4xl shadow-xl mb-4">
-        🃏
+      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-gold to-gold-dark flex items-center justify-center shadow-xl mb-4">
+        <Icon e="🃏" size={36} className="align-middle" />
       </div>
       <h1 className="text-2xl font-bold text-ivory">扑克训练场</h1>
       <p className="text-sm text-ivory/50 mt-1 mb-6">创建你的牌手账号，开始训练</p>

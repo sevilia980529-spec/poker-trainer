@@ -13,6 +13,7 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { cn } from '../lib/utils';
+import Icon from '../components/Icon';
 
 function GdCardView({ card, level, selected, onClick, mini }: {
   card: GdCard; level: Level; selected?: boolean; onClick?: () => void; mini?: boolean;
@@ -233,14 +234,14 @@ export default function Guandan() {
   return (
     <div className="min-h-screen bg-[#071007] text-ivory flex flex-col">
       <header className="flex items-center gap-4 px-5 py-3 border-b border-ink-light/50 bg-ink-card/60 flex-wrap">
-        <Link to="/" className="text-ivory/60 hover:text-ivory text-sm">← 德州牌桌</Link>
-        <Link to="/drills" className="text-ivory/60 hover:text-ivory text-sm">🎯 专项训练</Link>
-        <Link to="/blackjack" className="text-ivory/60 hover:text-ivory text-sm">♣ 21点</Link>
-        <h1 className="text-lg font-bold">🃏 掼蛋训练场</h1>
+        <Link to="/" className="text-ivory/60 hover:text-ivory text-sm"><Icon e="←" size={14} className="align-middle" /> 德州牌桌</Link>
+        <Link to="/drills" className="text-ivory/60 hover:text-ivory text-sm"><Icon e="🎯" size={14} className="align-middle" /> 专项训练</Link>
+        <Link to="/blackjack" className="text-ivory/60 hover:text-ivory text-sm"><Icon e="♣" size={14} className="align-middle" /> 21点</Link>
+        <h1 className="text-lg font-bold"><Icon e="🃏" size={18} className="align-middle" /> 掼蛋训练场</h1>
         <Badge className="bg-emerald-700">本局打 {RANK_LABEL[playingLevel]}</Badge>
         <Badge variant="outline" className="text-amber-300 border-amber-700">红桃{RANK_LABEL[playingLevel]} = 百搭</Badge>
         <span className="text-xs text-ivory/60">我方级牌 {RANK_LABEL[level[0]]} · 对方 {RANK_LABEL[level[1]]}</span>
-        <Badge className="bg-amber-600 ml-auto">🫘 {profile.points.toLocaleString()} 分</Badge>
+        <Badge className="bg-amber-600 ml-auto"><Icon e="🫘" size={14} className="align-middle" /> {profile.points.toLocaleString()} 分</Badge>
       </header>
 
       <main className="flex-1 flex flex-col p-3 gap-2 max-w-5xl mx-auto w-full">
@@ -272,7 +273,11 @@ export default function Guandan() {
 
         {/* 提示/错误 */}
         {error && (
-          <p className={cn('text-xs text-center', error.startsWith('💡') ? 'text-gold-light' : 'text-red-400')}>{error}</p>
+          <p className={cn('text-xs text-center', error.startsWith('💡') ? 'text-gold-light' : 'text-red-400')}>
+            {error.startsWith('💡')
+              ? <><Icon e="💡" size={12} className="align-middle" /> {error.replace(/^💡\s*/, '')}</>
+              : error}
+          </p>
         )}
 
         {/* 我的手牌（扇形手持布局） */}
@@ -289,7 +294,7 @@ export default function Guandan() {
             <button
               onClick={() => setSortMode(m => (m === 'rank' ? 'suit' : 'rank'))}
               className="text-xs rounded-full px-3 py-1.5 border border-ink-light/70 bg-ink-light/80 text-ivory/80 hover:bg-ink-light">
-              🔄 理牌 · {sortMode === 'rank' ? '按大小' : '按花色'}
+              <Icon e="🔄" size={12} className="align-middle" /> 理牌 · {sortMode === 'rank' ? '按大小' : '按花色'}
             </button>
             <span className="text-xs text-ivory/60">
               {selCards.length > 0
@@ -301,7 +306,7 @@ export default function Guandan() {
                 <Button className="bg-amber-600 hover:bg-amber-500" disabled={!selCombo} onClick={play}>出牌</Button>
                 {canPass && <Button variant="secondary" onClick={pass}>过牌</Button>}
                 <Button variant="outline" className="border-gold-dark text-gold-light" onClick={hint}>
-                  {hintUsed ? '再想想' : '💡 提示'}
+                  {hintUsed ? '再想想' : <><Icon e="💡" size={12} className="align-middle" /> 提示</>}
                 </Button>
               </>
             )}
@@ -313,7 +318,7 @@ export default function Guandan() {
       <Dialog open={showRoundOver} onOpenChange={setShowRoundOver}>
         <DialogContent className="bg-ink-card border-ink-light/60 text-ivory max-w-md">
           <DialogHeader>
-            <DialogTitle>{game.phase === 'matchOver' ? '🏆 比赛结束' : '本局结束'}</DialogTitle>
+            <DialogTitle><Icon e="🏆" size={16} className="align-middle" /> {game.phase === 'matchOver' ? '比赛结束' : '本局结束'}</DialogTitle>
           </DialogHeader>
           {game.roundResult && (
             <div className="space-y-2 text-sm">
@@ -329,7 +334,7 @@ export default function Guandan() {
               <p className="text-ivory/60">级牌：我方 {RANK_LABEL[game.level[0]]} · 对方 {RANK_LABEL[game.level[1]]}</p>
               {game.phase === 'matchOver' && (
                 <p className="font-bold text-amber-300">
-                  {game.matchWinner === 0 ? '🎉 你方打穿 A 级，赢下整场比赛！+500 积分' : '对方打穿 A 级获胜。-200 积分'}
+                  {game.matchWinner === 0 ? <><Icon e="🎉" size={14} className="align-middle" /> 你方打穿 A 级，赢下整场比赛！+500 积分</> : '对方打穿 A 级获胜。-200 积分'}
                 </p>
               )}
             </div>

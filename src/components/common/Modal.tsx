@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 interface ModalProps {
   open: boolean;
   onClose: () => void;
-  title?: string;
+  title?: ReactNode;
   children: ReactNode;
   showClose?: boolean;
 }

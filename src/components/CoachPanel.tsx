@@ -4,6 +4,7 @@ import type { CoachAdvice } from '../ai/coach';
 import { POSITION_TIPS } from '../ai/coach';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
+import Icon from './Icon';
 
 const REC_LABEL: Record<string, { text: string; color: string }> = {
   fold:  { text: '弃牌 FOLD',  color: 'bg-danger text-white' },
@@ -25,7 +26,7 @@ export function CoachPanel({ state, heroIdx, advice }: {
       {/* 位置 */}
       <div className="rounded-xl bg-ink-light/70 p-3 border border-gold/15">
         <div className="flex items-center justify-between mb-1">
-          <span className="font-semibold text-gold">📍 你的位置：{pos}</span>
+          <span className="font-semibold text-gold"><Icon e="📍" size={14} className="align-middle" /> 你的位置：{pos}</span>
           <Badge variant="outline" className="text-ivory/60 border-gold/25">{STREET_NAME[state.street]}</Badge>
         </div>
         <p className="text-ivory/60 text-xs leading-relaxed">{POSITION_TIPS[pos]}</p>
@@ -35,7 +36,7 @@ export function CoachPanel({ state, heroIdx, advice }: {
       {advice?.equity && (
         <div className="rounded-xl bg-ink-light/70 p-3 border border-gold/15">
           <div className="flex items-center justify-between mb-1">
-            <span className="font-semibold text-gold">🎯 实时胜率（Equity）</span>
+            <span className="font-semibold text-gold"><Icon e="🎯" size={14} className="align-middle" /> 实时胜率（Equity）</span>
             <span className="font-mono text-lg font-bold text-gold">
               {(advice.equity.equity * 100).toFixed(1)}%
             </span>
@@ -59,7 +60,7 @@ export function CoachPanel({ state, heroIdx, advice }: {
       {advice && rec && (
         <div className="rounded-xl bg-ink-light/70 p-3 border border-gold/20">
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <span className="font-semibold text-gold">🎓 教练建议</span>
+            <span className="font-semibold text-gold"><Icon e="🎓" size={14} className="align-middle" /> 教练建议</span>
             <span className={`px-2 py-0.5 rounded text-xs font-bold ${rec.color}`}>
               {rec.text}{advice.recommendation === 'raise' && advice.raiseSize ? ` → ${advice.raiseSize}` : ''}
             </span>

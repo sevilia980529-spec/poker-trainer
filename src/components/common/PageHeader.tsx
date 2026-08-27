@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router';
+import Icon from '../Icon';
 
 interface PageHeaderProps {
   title: string;
@@ -16,7 +17,7 @@ export default function PageHeader({ title, backTo, right }: PageHeaderProps) {
           onClick={() => (backTo ? navigate(backTo) : navigate(-1))}
           className="text-ivory/80 active:scale-95 text-sm min-w-[48px] text-left"
         >
-          ← 返回
+          <Icon e="←" size={16} className="align-middle" /> 返回
         </button>
         <h1 className="text-base font-semibold text-ivory">{title}</h1>
         <div className="min-w-[48px] flex justify-end">{right}</div>

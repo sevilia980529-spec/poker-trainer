@@ -9,6 +9,7 @@ import { ToastContainer, useToast } from '../components/common/Toast';
 import { useUserStore, useLevel } from '../store/userStore';
 import { loadProfile, saveProfile, defaultProfile, claimRelief, DAILY_BONUS, BUY_IN } from '../store/points';
 import { loadDrillStats } from '../store/drillStats';
+import Icon from '../components/Icon';
 
 export default function Profile() {
   const nickname = useUserStore((s) => s.nickname);
@@ -97,7 +98,7 @@ export default function Profile() {
               ) : (
                 <button onClick={() => { setNameInput(nickname); setEditingName(true); }}
                   className="text-lg font-bold text-ivory active:scale-95">
-                  {nickname} ✏️
+                  {nickname} <Icon e="✏️" size={14} className="align-middle" />
                 </button>
               )}
               <div className="mt-1.5"><LevelBadge level={level} size="md" /></div>
@@ -186,7 +187,7 @@ export default function Profile() {
         <section className="space-y-3 animate-fade-up" style={{ animationDelay: '0.15s' }}>
           {profile.points < BUY_IN && (
             <Button fullWidth variant="primary" onClick={relief}>
-              💰 欢乐豆不足，领取补给 +{DAILY_BONUS.toLocaleString()}
+              <Icon e="💰" size={16} className="align-middle" /> 欢乐豆不足，领取补给 +{DAILY_BONUS.toLocaleString()}
             </Button>
           )}
           <Button fullWidth variant="ghost" onClick={() => setConfirmReset(true)}>

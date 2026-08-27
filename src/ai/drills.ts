@@ -2,14 +2,17 @@
 import type { Card } from '../engine/cards';
 import { createDeck, shuffle, cardToString, handNotation, RANK_LABEL } from '../engine/cards';
 import { inOpeningRange } from './coach';
+import { handValue } from '../games/blackjack/engine';
+import { basicStrategyFull } from '../games/blackjack/strategy';
 
-export type DrillCategory = 'preflop' | 'potodds' | 'bluff' | 'betsize';
+export type DrillCategory = 'preflop' | 'potodds' | 'bluff' | 'betsize' | 'blackjack';
 
 export const DRILL_CATEGORY_INFO: Record<DrillCategory, { name: string; icon: string; desc: string }> = {
-  preflop: { name: '位置与起手牌', icon: '🂡', desc: '不同位置该玩哪些牌' },
-  potodds: { name: '底池赔率', icon: '🎯', desc: '用赔率决定跟注还是弃牌' },
-  bluff:   { name: '诈唬时机', icon: '🃏', desc: '什么时候诈唬有利可图' },
-  betsize: { name: '下注尺度', icon: '📏', desc: '下注多少才合理' },
+  preflop: { name: '位置与起手牌', icon: 'cards', desc: '不同位置该玩哪些牌' },
+  potodds: { name: '底池赔率', icon: 'target', desc: '用赔率决定跟注还是弃牌' },
+  bluff:   { name: '诈唬时机', icon: 'joker', desc: '什么时候诈唬有利可图' },
+  betsize: { name: '下注尺度', icon: 'ruler', desc: '下注多少才合理' },
+  blackjack: { name: '21点基本策略', icon: 'joker', desc: '跟庄家明牌做最优决策' },
 };
 
 export interface DrillOption { label: string; value: string }
@@ -278,12 +281,61 @@ export function genBetSizeDrill(): Drill {
   };
 }
 
+// ---------- 5. 21点基本策略 ----------
+const BJ_ACTION_LABEL: Record<string, string> = { hit: '要牌', stand: '停牌', double: '双倍', split: '分牌' };
+
+function bjCard(): Card {
+  const rankPool = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+  const rank = rankPool[Math.floor(Math.random() * rankPool.length)];
+  const suit = (['s', 'h', 'd', 'c'] as const)[Math.floor(Math.random() * 4)];
+  return { rank, suit };
+}
+
+export function genBlackjackDrill(): Drill {
+  let player: Card[], dealer: Card, hv: { value: number; soft: boolean };
+  // 避开天生 21（无需决策）和过小牌型，保证是真实决策点
+  do {
+    player = [bjCard(), bjCard()];
+    dealer = bjCard();
+    hv = handValue(player);
+  } while (hv.value === 21 || hv.value <= 3);
+
+  const canSplit = player[0].rank === player[1].rank;
+  const { action, why } = basicStrategyFull(player, dealer, canSplit);
+  const label = (c: Card) => RANK_LABEL[c.rank];
+  const handStr = player.map(label).join(' ');
+
+  const opts: DrillOption[] = [
+    { label: '要牌', value: 'hit' },
+    { label: '停牌', value: 'stand' },
+    { label: '双倍', value: 'double' },
+  ];
+  if (canSplit) opts.push({ label: '分牌', value: 'split' });
+  if (!opts.some((o) => o.value === action)) {
+    opts.push({ label: BJ_ACTION_LABEL[action] ?? action, value: action });
+  }
+  opts.sort(() => Math.random() - 0.5);
+
+  return {
+    category: 'blackjack',
+    prompt: `21点：你手持【${handStr}】，庄家明牌是【${label(dealer)}】。你这一步该怎么打？`,
+    heroCards: player,
+    board: [dealer],
+    detail: `你的牌：${handStr}（${hv.soft ? '软' : '硬'}${hv.value}） · 庄家明牌：${label(dealer)}`,
+    options: opts,
+    correct: action,
+    explanation: `基本策略：${why}`,
+    concepts: ['21点基本策略', '庄家明牌读牌', canSplit ? '分牌时机' : (hv.soft ? '软牌处理' : '硬牌处理')],
+  };
+}
+
 export function genDrill(category: DrillCategory): Drill {
   switch (category) {
     case 'preflop': return genPreflopDrill();
     case 'potodds': return genPotOddsDrill();
     case 'bluff': return genBluffDrill();
     case 'betsize': return genBetSizeDrill();
+    case 'blackjack': return genBlackjackDrill();
   }
 }
 

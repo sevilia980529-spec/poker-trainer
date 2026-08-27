@@ -5,6 +5,7 @@ import Button from '../components/common/Button';
 import { ToastContainer, useToast } from '../components/common/Toast';
 import { useUserStore, useLevel } from '../store/userStore';
 import { loadProfile, saveProfile } from '../store/points';
+import Icon from '../components/Icon';
 
 const CHECKIN_CHIPS = 500;
 
@@ -63,7 +64,7 @@ export default function Home() {
             <div>
               <div className="text-xs text-ivory/60">当前段位</div>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-2xl">{level.icon}</span>
+                <Icon name={level.icon} size={24} className="align-middle" />
                 <span className="text-xl font-bold" style={{ color: level.color }}>
                   {level.name}
                 </span>
@@ -112,7 +113,7 @@ export default function Home() {
             <div className="flex-1">
               <h3 className="font-semibold text-ivory">每日签到</h3>
               <p className="text-xs text-ivory/60 mt-0.5">
-                {checkedToday ? '✅ 今日已签到，明天再来' : `领取今日 ${CHECKIN_CHIPS} 欢乐豆 + 50 XP`}
+                {checkedToday ? <><Icon e="✅" size={12} className="align-middle" /> 今日已签到，明天再来</> : `领取今日 ${CHECKIN_CHIPS} 欢乐豆 + 50 XP`}
               </p>
             </div>
             <Button
@@ -130,7 +131,7 @@ export default function Home() {
         <section className="space-y-3 animate-fade-up" style={{ animationDelay: '0.1s' }}>
           <h2 className="text-sm font-semibold text-ivory/80 px-1">开始游戏</h2>
           <Button fullWidth size="lg" variant="primary" onClick={() => navigate('/lobby')} className="!py-4">
-            <span className="text-xl">♠</span>
+            <Icon e="♠" size={20} className="align-middle" />
             <span>德州训练</span>
             <span className="text-xs opacity-70">单人对战 AI</span>
           </Button>
@@ -138,13 +139,13 @@ export default function Home() {
           <div className="grid grid-cols-2 gap-3">
             <Button fullWidth variant="secondary" onClick={() => navigate('/training')}>
               <div className="flex flex-col items-center">
-                <span className="text-xl mb-0.5">🎯</span>
+                <Icon e="🎯" size={20} className="align-middle mb-0.5" />
                 <span>专项练习</span>
               </div>
             </Button>
             <Button fullWidth variant="secondary" onClick={() => navigate('/room')}>
               <div className="flex flex-col items-center">
-                <span className="text-xl mb-0.5">👥</span>
+                <Icon e="👥" size={20} className="align-middle mb-0.5" />
                 <span>好友房</span>
               </div>
             </Button>
@@ -157,12 +158,12 @@ export default function Home() {
             className="!py-3 bg-gradient-to-r from-red-900/40 to-red-950/50 border-red-700/50"
           >
             <div className="flex items-center gap-3">
-              <span className="text-2xl">🃏</span>
+              <Icon e="🃏" size={24} className="align-middle" />
               <div className="flex-1 text-left">
                 <div className="text-ivory font-bold">21点训练</div>
                 <div className="text-xs text-ivory/60">跟庄家对玩，Basic Strategy</div>
               </div>
-              <span className="text-ivory/60">→</span>
+              <Icon e="→" size={16} className="align-middle text-ivory/60" />
             </div>
           </Button>
         </section>

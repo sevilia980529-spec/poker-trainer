@@ -18,6 +18,7 @@ import { AnimatedNumber } from '../components/AnimatedNumber';
 import { playDeal, playChips, playClick, playFold, playWin, playLose, playShuffle, playPotSweep, isMuted, setMuted } from '../lib/sound';
 import { loadTableConfig, DIFFICULTY_STYLES, BLIND_OPTIONS } from '../lib/tableConfig';
 import { useUserStore } from '../store/userStore';
+import Icon from '../components/Icon';
 import Avatar from '../components/Avatar';
 import { CoachPanel } from '../components/CoachPanel';
 import { ReviewList } from '../components/ReviewList';
@@ -44,9 +45,10 @@ const AI_SEAT_POS = [
   'right-[3%] bottom-[-7%]',
 ];
 
-const STYLE_EMOJI: Record<string, string> = {
-  tag: '🦊', lag: '🔥', station: '🐷', nit: '🪨', balanced: '⚖️',
+const STYLE_ICON: Record<string, string> = {
+  tag: 'fox', lag: 'fire', station: 'pig', nit: 'rock', balanced: 'scale',
 };
+const styleAvatar = (style: string) => `/icons/${STYLE_ICON[style] ?? 'robot'}.png`;
 
 // 各座位中心相对牌桌容器的百分比坐标（用于筹码飞行动画）
 const SEAT_PCT_HERO = { x: 50, y: 108 };
@@ -466,7 +468,7 @@ export default function PokerTrainer() {
                     game.street === 'handOver' && game.winners?.some(w => w.playerId === p.id) && 'anim-winner border-gold')}>
                     <span className={cn('w-7 h-7 rounded-full bg-ink-light flex items-center justify-center text-sm relative',
                       game.actingIdx === p.id ? 'anim-ring' : 'anim-breathe')}>
-                      {STYLE_EMOJI[p.style] ?? '🤖'}
+                      <Icon name={STYLE_ICON[p.style] ?? 'robot'} size={14} />
                       {game.dealerIdx === p.id && (
                         <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-gold text-[8px] text-black font-bold flex items-center justify-center">D</span>
                       )}
@@ -561,7 +563,7 @@ export default function PokerTrainer() {
                 · {heroPositionName(game, 0)}{game.dealerIdx === 0 && ' · 庄家'}
               </span>
             </div>
-            <div className="text-gold font-bold num">💰 <AnimatedNumber value={game.players[0].chips} /></div>
+            <div className="text-gold font-bold num"><Icon e="💰" size={16} className="align-middle" /> <AnimatedNumber value={game.players[0].chips} /></div>
           </div>
 
           {/* 教练建议条（点开看详情） */}
@@ -580,7 +582,7 @@ export default function PokerTrainer() {
                 </button>
               </SheetTrigger>
               <SheetContent side="right" className="bg-ink border-gold/20 text-ivory w-full sm:max-w-md overflow-y-auto">
-                <SheetHeader><SheetTitle className="text-ivory">🎓 教练分析</SheetTitle></SheetHeader>
+                <SheetHeader><SheetTitle className="text-ivory"><Icon e="🎓" size={16} className="align-middle" /> 教练分析</SheetTitle></SheetHeader>
                 <Tabs defaultValue="coach" className="mt-2">
                   <TabsList className="w-full">
                     <TabsTrigger value="coach" className="flex-1">教练</TabsTrigger>
@@ -661,7 +663,7 @@ export default function PokerTrainer() {
           info={game.handOverInfo ?? ''}
           players={game.players.map(p => ({
             name: p.isHero ? nickname : p.name,
-            avatar: p.isHero ? avatar : (STYLE_EMOJI[p.style] ?? '🤖'),
+            avatar: p.isHero ? avatar : styleAvatar(p.style),
             hole: p.folded ? [] : p.hole,
             folded: p.folded,
             winner: !!game.winners?.some(w => w.playerId === p.id),

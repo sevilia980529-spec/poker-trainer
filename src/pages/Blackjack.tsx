@@ -12,8 +12,10 @@ import { Chip, ChipStack } from '../components/ChipStack';
 import { playDeal, playChips, playClick, playWin, playLose } from '../lib/sound';
 import { Button } from '../components/ui/button';
 import { Switch } from '../components/ui/switch';
+import { RulesGuideDialog } from '../components/RulesGuide';
 import { ArrowLeft } from 'lucide-react';
 import { cn } from '../lib/utils';
+import Icon from '../components/Icon';
 
 const BET_OPTIONS = [50, 100, 200, 500];
 const ACTION_LABEL: Record<string, string> = { hit: '要牌', stand: '停牌', double: '双倍', split: '分牌' };
@@ -40,6 +42,7 @@ export default function Blackjack() {
   const [bet, setBet] = useState(100);
   const [showCount, setShowCount] = useState(false);
   const [coachOn, setCoachOn] = useState(true);
+  const [showRules, setShowRules] = useState(false);
   const [log, setLog] = useState<ActionLog[]>([]);
   const [insuranceLog, setInsuranceLog] = useState<{ took: boolean; correct: boolean } | null>(null);
   const [sessionProfit, setSessionProfit] = useState(0);
@@ -133,6 +136,7 @@ export default function Blackjack() {
           <ArrowLeft className="w-4 h-4" />牌桌
         </Link>
         <Link to="/drills" className="text-ivory/60 hover:text-ivory text-sm">专项训练</Link>
+        <button onClick={() => setShowRules(true)} className="text-ivory/60 hover:text-ivory text-sm">规则</button>
         <h1 className="text-base font-bold">21点训练室</h1>
         <span className={cn('text-xs font-mono', sessionProfit > 0 ? 'text-emerald-400' : sessionProfit < 0 ? 'text-red-400' : 'text-ivory/45')}>
           盈亏 {sessionProfit >= 0 ? '+' : ''}{sessionProfit}
@@ -146,6 +150,8 @@ export default function Blackjack() {
           </label>
         </div>
       </header>
+
+      <RulesGuideDialog open={showRules} onOpenChange={setShowRules} />
 
       <main className="flex-1 flex flex-col items-center p-3 gap-3 max-w-3xl mx-auto w-full">
         {/* ===== 牌桌呢绒区 ===== */}
@@ -255,14 +261,16 @@ export default function Blackjack() {
                 disabled={profile.points < Math.floor(game.hands[0].bet / 2)}>买保险</Button>
               <Button variant="secondary" className="rounded-full px-6" onClick={() => answerInsurance(false)}>不买</Button>
             </div>
-            {coachOn && <p className="text-[11px] text-ivory/60 max-w-md text-center">💡 {INSURANCE_TEACHING.why}</p>}
+            {coachOn && <p className="text-[11px] text-ivory/60 max-w-md text-center"><Icon e="💡" size={12} className="align-middle" /> {INSURANCE_TEACHING.why}</p>}
           </div>
         )}
         {insuranceLog && game?.phase !== 'insurance' && (
           <p className={cn('text-xs', insuranceLog.correct ? 'text-emerald-400' : 'text-amber-400')}>
             {insuranceLog.correct
-              ? (insuranceLog.took ? '✅ 真计数够高，保险合理' : '✅ 不买保险是基本策略正解')
-              : '⚠️ 真计数 <+3 时买保险是负期望，记住：基本策略永远不买保险'}
+              ? (insuranceLog.took
+                  ? <><Icon e="✅" size={12} className="align-middle" /> 真计数够高，保险合理</>
+                  : <><Icon e="✅" size={12} className="align-middle" /> 不买保险是基本策略正解</>)
+              : <><Icon e="⚠️" size={12} className="align-middle" /> 真计数 &lt;+3 时买保险是负期望，记住：基本策略永远不买保险</>}
           </p>
         )}
 
@@ -306,7 +314,7 @@ export default function Blackjack() {
         <div className="w-full grid md:grid-cols-2 gap-3 pb-4">
           {advice && (
             <div className="rounded-xl bg-ink-card/80 border border-emerald-800/60 p-3 text-sm">
-              <p className="font-semibold text-emerald-300 mb-1">🎓 基本策略建议：
+              <p className="font-semibold text-emerald-300 mb-1"><Icon e="🎓" size={14} className="align-middle" /> 基本策略建议：
                 <span className="text-white font-bold ml-1">{ACTION_LABEL[advice.action]}</span>
               </p>
               <p className="text-xs text-ivory/60 leading-relaxed">{advice.why}</p>
@@ -315,7 +323,7 @@ export default function Blackjack() {
           {showCount && ci && (
             <div className="rounded-xl bg-ink-card/80 border border-purple-800/60 p-3 text-sm">
               <p className="font-semibold text-purple-300 mb-1">
-                🔢 Hi-Lo：累积 <span className="font-mono text-white">{ci.running > 0 ? '+' : ''}{ci.running}</span>
+                <Icon e="🔢" size={14} className="align-middle" /> Hi-Lo：累积 <span className="font-mono text-white">{ci.running > 0 ? '+' : ''}{ci.running}</span>
                 {' '}· 真计数 <span className="font-mono text-white">{ci.trueCount > 0 ? '+' : ''}{ci.trueCount}</span>
                 {' '}· 剩 {ci.decksLeft} 副
               </p>
@@ -324,12 +332,12 @@ export default function Blackjack() {
           )}
           {log.length > 0 && (
             <div className="rounded-xl bg-ink-card/80 border border-ink-light/60 p-3 text-sm md:col-span-2">
-              <p className="font-semibold text-ivory/80 mb-1">📒 本局决策</p>
+              <p className="font-semibold text-ivory/80 mb-1"><Icon e="📒" size={14} className="align-middle" /> 本局决策</p>
               <div className="space-y-1">
                 {log.map((l, i) => (
                   <p key={i} className="text-xs">
                     <span className={l.correct ? 'text-emerald-400' : 'text-red-400'}>
-                      {l.correct ? '✅' : '❌'} {game && game.hands.length > 1 ? `第${l.hand + 1}手 ` : ''}{l.action}
+                      <Icon e={l.correct ? '✅' : '❌'} size={12} className="align-middle" /> {game && game.hands.length > 1 ? `第${l.hand + 1}手 ` : ''}{l.action}
                     </span>
                     <span className="text-ivory/60 ml-2">{l.why}</span>
                   </p>

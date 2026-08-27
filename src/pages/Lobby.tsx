@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router';
 import Header from '../components/common/Header';
 import Button from '../components/common/Button';
 import { saveTableConfig, loadTableConfig, BLIND_OPTIONS, type AIDifficulty } from '../lib/tableConfig';
+import Icon from '../components/Icon';
 
-const DIFFICULTIES: { value: AIDifficulty; label: string; emoji: string; desc: string; color: string }[] = [
-  { value: 'easy', label: '新手', emoji: '🌱', desc: '松散被动', color: 'from-green-600 to-green-400' },
-  { value: 'normal', label: '进阶', emoji: '🔥', desc: '有策略性', color: 'from-orange-600 to-orange-400' },
-  { value: 'hard', label: '高手', emoji: '⚡', desc: '紧凶精准', color: 'from-red-600 to-red-400' },
-  { value: 'gto', label: 'GTO', emoji: '👑', desc: '理论最优', color: 'from-purple-600 to-purple-400' },
+const DIFFICULTIES: { value: AIDifficulty; label: string; icon: string; desc: string; color: string }[] = [
+  { value: 'easy', label: '新手', icon: 'seedling', desc: '松散被动', color: 'from-green-600 to-green-400' },
+  { value: 'normal', label: '进阶', icon: 'fire', desc: '有策略性', color: 'from-orange-600 to-orange-400' },
+  { value: 'hard', label: '高手', icon: 'zap', desc: '紧凶精准', color: 'from-red-600 to-red-400' },
+  { value: 'gto', label: 'GTO', icon: 'crown', desc: '理论最优', color: 'from-purple-600 to-purple-400' },
 ];
 
 const PLAYER_COUNTS = [
@@ -60,7 +61,7 @@ export default function Lobby() {
                     : 'bg-ink-card border border-white/5'}
                 `}
               >
-                <div className="text-3xl mb-1">{d.emoji}</div>
+                <div className="text-3xl mb-1"><Icon name={d.icon} size={24} className="align-middle" /></div>
                 <div className="font-bold text-ivory">{d.label}</div>
                 <div className="text-xs text-ivory/70 mt-0.5">{d.desc}</div>
                 {difficulty === d.value && (
@@ -127,7 +128,7 @@ export default function Lobby() {
         </section>
 
         <Button fullWidth size="lg" onClick={handleStart} className="!py-4 animate-fade-up" >
-          <span className="text-xl">♠</span>
+          <Icon e="♠" size={20} className="align-middle" />
           开始对战
         </Button>
       </main>

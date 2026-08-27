@@ -1,4 +1,5 @@
 import type { Level } from '../../lib/level';
+import Icon from '../Icon';
 
 interface LevelBadgeProps {
   level: Level;
@@ -22,7 +23,7 @@ export default function LevelBadge({ level, size = 'md', showName = true }: Leve
         border: `1px solid ${level.color}`,
       }}
     >
-      <span>{level.icon}</span>
+      <Icon name={level.icon} size={14} className="align-middle" />
       {showName && <span>{level.name}</span>}
     </span>
   );

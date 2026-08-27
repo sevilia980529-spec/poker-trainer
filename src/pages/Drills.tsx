@@ -6,6 +6,7 @@ import { loadDrillStats, recordAnswer, DRILL_REWARD, type DrillStats } from '../
 import { loadProfile, saveProfile } from '../store/points';
 import { useUserStore } from '../store/userStore';
 import { PlayingCard } from '../components/PlayingCard';
+import Icon from '../components/Icon';
 import { RulesGuideDialog } from '../components/RulesGuide';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -48,16 +49,16 @@ export default function Drills() {
   const acc = stats.answered ? Math.round(stats.correct / stats.answered * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      <header className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-800 bg-slate-900/60 flex-wrap safe-top">
-        <Link to="/training" className="text-slate-400 hover:text-slate-200 text-sm">← 训练中心</Link>
-        <Link to="/" className="text-slate-400 hover:text-slate-200 text-sm">🏠 首页</Link>
-        <h1 className="text-lg font-bold">🎯 专项训练</h1>
-        <button onClick={() => setShowRules(true)} className="text-slate-400 hover:text-slate-200 text-sm">📖 规则术语</button>
-        <div className="text-xs text-slate-400 flex gap-3 ml-auto">
+    <div className="min-h-screen bg-ink text-ivory flex flex-col">
+      <header className="flex items-center gap-3 px-4 py-2.5 border-b border-ink-light bg-ink-card/60 flex-wrap safe-top">
+        <Link to="/training" className="text-ivory/60 hover:text-ivory text-sm"><Icon e="←" size={14} className="align-middle" /> 训练中心</Link>
+        <Link to="/" className="text-ivory/60 hover:text-ivory text-sm"><Icon e="🏠" size={14} className="align-middle" /> 首页</Link>
+        <h1 className="text-lg font-bold"><Icon e="🎯" size={16} className="align-middle" /> 专项训练</h1>
+        <button onClick={() => setShowRules(true)} className="text-ivory/60 hover:text-ivory text-sm"><Icon e="📖" size={14} className="align-middle" /> 规则术语</button>
+        <div className="text-xs text-ivory/60 flex gap-3 ml-auto">
           <span>已答 {stats.answered}</span>
           <span>正确率 {acc}%</span>
-          <span>连对 🔥{stats.streak}</span>
+          <span>连对 <Icon e="🔥" size={12} className="align-middle" />{stats.streak}</span>
           <span>最佳连对 {stats.bestStreak}</span>
         </div>
       </header>
@@ -73,10 +74,10 @@ export default function Drills() {
                 onClick={() => { setCategory(c); nextDrill(c); }}
                 className={cn('px-3 py-2 rounded-lg border text-sm transition',
                   category === c
-                    ? 'bg-amber-600/20 border-amber-500 text-amber-200'
-                    : 'bg-slate-900 border-slate-700 text-slate-300 hover:border-slate-500')}>
-                <div className="font-semibold">{info.icon} {info.name}</div>
-                <div className="text-[10px] text-slate-500">{info.desc}
+                    ? 'bg-gold/20 border-gold text-gold-light'
+                    : 'bg-ink-card border-ink-light text-ivory hover:border-ink-light')}>
+                <div className="font-semibold"><Icon name={info.icon} size={16} className="align-middle" /> {info.name}</div>
+                <div className="text-[10px] text-ivory/40">{info.desc}
                   {cs ? ` · ${cs.correct}/${cs.answered}` : ''}</div>
               </button>
             );
@@ -84,13 +85,13 @@ export default function Drills() {
         </div>
 
         {/* 题目卡片 */}
-        <div className="w-full rounded-xl bg-slate-900 border border-slate-700 p-5 space-y-4">
+        <div className="w-full rounded-xl bg-ink-card border border-ink-light p-5 space-y-4">
           <div className="flex items-center gap-2">
-            <Badge className="bg-slate-700">{catInfo.icon} {catInfo.name}</Badge>
+            <Badge className="bg-ink-light"><Icon name={catInfo.icon} size={14} className="align-middle" /> {catInfo.name}</Badge>
           </div>
-          <p className="leading-relaxed text-slate-100">{drill.prompt}</p>
+          <p className="leading-relaxed text-ivory">{drill.prompt}</p>
           {drill.detail && (
-            <p className="text-xs text-slate-400 font-mono bg-slate-800/70 rounded px-2 py-1.5">{drill.detail}</p>
+            <p className="text-xs text-ivory/60 font-mono bg-ink-light/70 rounded px-2 py-1.5">{drill.detail}</p>
           )}
           <div className="flex items-center gap-4">
             <div className="flex gap-1.5">
@@ -98,7 +99,7 @@ export default function Drills() {
             </div>
             {drill.board.length > 0 && (
               <>
-                <span className="text-slate-600 text-xs">公共牌 →</span>
+                <span className="text-ivory/40 text-xs">公共牌 <Icon e="→" size={12} className="align-middle" /></span>
                 <div className="flex gap-1.5">
                   {drill.board.map((c, i) => <PlayingCard key={i} card={c} />)}
                 </div>
@@ -114,13 +115,13 @@ export default function Drills() {
               return (
                 <button key={o.value} onClick={() => choose(o.value)} disabled={answered}
                   className={cn('px-4 py-3 rounded-lg border text-left font-semibold transition',
-                    !answered && 'bg-slate-800 border-slate-600 hover:border-amber-500 hover:bg-slate-700',
+                    !answered && 'bg-ink-light border-ink-light hover:border-gold hover:bg-ink-light',
                     isRight && 'bg-emerald-900/50 border-emerald-500 text-emerald-200',
                     isWrongPick && 'bg-red-900/50 border-red-500 text-red-200',
-                    answered && !isRight && !isWrongPick && 'bg-slate-800/50 border-slate-700 text-slate-500')}>
+                    answered && !isRight && !isWrongPick && 'bg-ink-light/50 border-ink-light text-ivory/40')}>
                   {o.label}
-                  {isRight && ' ✅'}
-                  {isWrongPick && ' ❌'}
+                  {isRight && <Icon e="✅" size={12} className="align-middle" />}
+                  {isWrongPick && <Icon e="❌" size={12} className="align-middle" />}
                 </button>
               );
             })}
@@ -131,12 +132,16 @@ export default function Drills() {
             <div className={cn('rounded-lg p-3 border text-sm leading-relaxed whitespace-pre-line',
               isCorrect ? 'bg-emerald-950/40 border-emerald-800' : 'bg-red-950/40 border-red-800')}>
               <p className="font-bold mb-1">
-                {isCorrect ? `回答正确！+${DRILL_REWARD} 积分 🎉` : '答错了，看解析 👇'}
+                {isCorrect ? (
+                  <span>回答正确！+{DRILL_REWARD} 积分 <Icon e="🎉" size={14} className="align-middle" /></span>
+                ) : (
+                  <span>答错了，看解析 <Icon e="👇" size={14} className="align-middle" /></span>
+                )}
               </p>
-              <p className="text-slate-300">{drill.explanation}</p>
+              <p className="text-ivory">{drill.explanation}</p>
               <div className="flex flex-wrap gap-1 mt-2">
                 {drill.concepts.map(c => (
-                  <span key={c} className="text-[10px] text-amber-300/80">#{c}</span>
+                  <span key={c} className="text-[10px] text-gold-light/80">#{c}</span>
                 ))}
               </div>
             </div>
@@ -144,7 +149,7 @@ export default function Drills() {
         </div>
 
         {answered && (
-          <Button size="lg" className="bg-amber-600 hover:bg-amber-500 px-8" onClick={() => nextDrill(category)}>
+          <Button size="lg" className="bg-gold hover:bg-gold px-8" onClick={() => nextDrill(category)}>
             下一题 ▶
           </Button>
         )}
