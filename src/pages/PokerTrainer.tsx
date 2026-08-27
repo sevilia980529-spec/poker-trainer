@@ -289,17 +289,17 @@ export default function PokerTrainer() {
               <Menu className="w-[18px] h-[18px]" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="glass text-ivory">
-            <DropdownMenuItem asChild><Link to="/" className="flex items-center gap-2"><HomeIcon className="w-4 h-4 text-gold" />首页</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link to="/training" className="flex items-center gap-2"><Target className="w-4 h-4 text-gold" />训练中心</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link to="/blackjack" className="flex items-center gap-2"><Club className="w-4 h-4 text-emerald-400" />21点训练室</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link to="/room" className="flex items-center gap-2"><Users className="w-4 h-4 text-gold" />好友房</Link></DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setShowRules(true)}><BookOpen className="w-4 h-4 text-violet-400 mr-2" />规则与术语</DropdownMenuItem>
+          <DropdownMenuContent className="bg-white text-ink border border-ink-light/40">
+            <DropdownMenuItem asChild><Link to="/" className="flex items-center gap-2"><HomeIcon className="w-4 h-4 text-ink" />首页</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link to="/training" className="flex items-center gap-2"><Target className="w-4 h-4 text-ink" />训练中心</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link to="/blackjack" className="flex items-center gap-2"><Club className="w-4 h-4 text-emerald-600" />21点训练室</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link to="/room" className="flex items-center gap-2"><Users className="w-4 h-4 text-ink" />好友房</Link></DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setShowRules(true)}><BookOpen className="w-4 h-4 text-violet-600 mr-2" />规则与术语</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <div className="flex items-center gap-1.5 text-sm font-bold tracking-widest text-ivory">
-          <Spade className="w-4 h-4 text-emerald-400" />德州训练场
+        <div className="flex items-center gap-2 text-lg font-bold tracking-widest text-ivory">
+          <Spade className="w-5 h-5 text-emerald-400" />德州训练场
         </div>
 
         <div className="flex items-center gap-2">
@@ -469,7 +469,7 @@ export default function PokerTrainer() {
                     game.street === 'handOver' && game.winners?.some(w => w.playerId === p.id) && 'anim-winner border-gold')}>
                     <span className={cn('w-7 h-7 rounded-full bg-ink-light flex items-center justify-center text-sm relative',
                       game.actingIdx === p.id ? 'anim-ring' : 'anim-breathe')}>
-                      <Icon name={STYLE_ICON[p.style] ?? 'robot'} size={14} />
+                      <Avatar value={styleAvatar(p.style)} size={28} />
                       {game.dealerIdx === p.id && (
                         <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-gold text-[8px] text-black font-bold flex items-center justify-center">D</span>
                       )}

@@ -234,10 +234,10 @@ export default function Guandan() {
   return (
     <div className="min-h-screen bg-[#071007] text-ivory flex flex-col">
       <header className="flex items-center gap-4 px-5 py-3 border-b border-ink-light/50 bg-ink-card/60 flex-wrap">
-        <Link to="/" className="text-ivory/60 hover:text-ivory text-sm"><Icon e="←" size={14} className="align-middle" /> 德州牌桌</Link>
-        <Link to="/drills" className="text-ivory/60 hover:text-ivory text-sm"><Icon e="🎯" size={14} className="align-middle" /> 专项训练</Link>
-        <Link to="/blackjack" className="text-ivory/60 hover:text-ivory text-sm"><Icon e="♣" size={14} className="align-middle" /> 21点</Link>
-        <h1 className="text-lg font-bold"><Icon e="🃏" size={18} className="align-middle" /> 掼蛋训练场</h1>
+        <Link to="/" className="text-ivory/60 hover:text-ivory text-base"><Icon e="←" size={15} className="align-middle" /> 德州牌桌</Link>
+        <Link to="/drills" className="text-ivory/60 hover:text-ivory text-base"><Icon e="🎯" size={15} className="align-middle" /> 专项训练</Link>
+        <Link to="/blackjack" className="text-ivory/60 hover:text-ivory text-base"><Icon e="♣" size={15} className="align-middle" /> 21点</Link>
+        <h1 className="text-xl font-bold"><Icon e="🃏" size={20} className="align-middle" /> 掼蛋训练场</h1>
         <Badge className="bg-emerald-700">本局打 {RANK_LABEL[playingLevel]}</Badge>
         <Badge variant="outline" className="text-amber-300 border-amber-700">红桃{RANK_LABEL[playingLevel]} = 百搭</Badge>
         <span className="text-xs text-ivory/60">我方级牌 {RANK_LABEL[level[0]]} · 对方 {RANK_LABEL[level[1]]}</span>

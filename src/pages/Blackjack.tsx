@@ -131,17 +131,17 @@ export default function Blackjack() {
 
   return (
     <div className="min-h-dvh bg-[#071007] text-ivory flex flex-col">
-      <header className="flex items-center gap-3 px-4 py-2.5 flex-wrap safe-top">
-        <Link to="/" className="text-ivory/60 hover:text-ivory text-sm flex items-center gap-1">
-          <ArrowLeft className="w-4 h-4" />牌桌
+      <header className="flex items-center gap-3 px-4 py-3 flex-wrap safe-top">
+        <Link to="/" className="text-ivory/60 hover:text-ivory text-base flex items-center gap-1.5">
+          <ArrowLeft className="w-5 h-5" />牌桌
         </Link>
-        <Link to="/drills" className="text-ivory/60 hover:text-ivory text-sm">专项训练</Link>
-        <button onClick={() => setShowRules(true)} className="text-ivory/60 hover:text-ivory text-sm">规则</button>
-        <h1 className="text-base font-bold">21点训练室</h1>
-        <span className={cn('text-xs font-mono', sessionProfit > 0 ? 'text-emerald-400' : sessionProfit < 0 ? 'text-red-400' : 'text-ivory/45')}>
+        <Link to="/drills" className="text-ivory/60 hover:text-ivory text-base">专项训练</Link>
+        <button onClick={() => setShowRules(true)} className="text-ivory/60 hover:text-ivory text-base">规则</button>
+        <h1 className="text-xl font-bold">21点训练室</h1>
+        <span className={cn('text-sm font-mono', sessionProfit > 0 ? 'text-emerald-400' : sessionProfit < 0 ? 'text-red-400' : 'text-ivory/45')}>
           盈亏 {sessionProfit >= 0 ? '+' : ''}{sessionProfit}
         </span>
-        <div className="ml-auto flex items-center gap-3 text-xs text-ivory/80">
+        <div className="ml-auto flex items-center gap-3 text-sm text-ivory/80">
           <label className="flex items-center gap-1.5">
             <Switch checked={coachOn} onCheckedChange={setCoachOn} /> 教练
           </label>

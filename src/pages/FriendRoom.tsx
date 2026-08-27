@@ -150,14 +150,14 @@ export default function FriendRoom() {
 
   return (
     <div className="min-h-dvh bg-[#071007] text-ivory flex flex-col">
-      <header className="flex items-center gap-3 px-4 py-2.5 safe-top">
-        <Link to="/" className="text-ivory/60 hover:text-ivory text-sm flex items-center gap-1">
-          <ArrowLeft className="w-4 h-4" />牌桌
+      <header className="flex items-center gap-3 px-4 py-3 safe-top">
+        <Link to="/" className="text-ivory/60 hover:text-ivory text-base flex items-center gap-1.5">
+          <ArrowLeft className="w-5 h-5" />牌桌
         </Link>
-        <h1 className="text-base font-bold">好友房</h1>
+        <h1 className="text-xl font-bold">好友房</h1>
         {lobby && <Badge className="bg-purple-700">房间 {lobby.roomId}</Badge>}
         {sessionDelta !== 0 && (
-          <span className={`text-xs font-mono ml-auto ${sessionDelta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+          <span className={`text-sm font-mono ml-auto ${sessionDelta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
             本场 {sessionDelta > 0 ? '+' : ''}{sessionDelta}
           </span>
         )}
