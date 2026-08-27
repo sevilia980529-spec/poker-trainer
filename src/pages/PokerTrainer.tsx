@@ -275,25 +275,25 @@ export default function PokerTrainer() {
   const nextHand = () => { const d = (dealerIdx + 1) % tableConfig.playerCount; setDealerIdx(d); startHand(d); };
 
   return (
-    <div className="h-dvh flex flex-col bg-[#071007] text-slate-100 overflow-hidden select-none">
+    <div className="h-dvh flex flex-col bg-[radial-gradient(ellipse_at_top,#0c1a12_0%,#071007_45%,#030604_100%)] text-ivory overflow-hidden select-none">
       {/* ===== 浮动顶栏 ===== */}
       <header className="relative z-30 flex items-center justify-between px-3 py-2 safe-top">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="w-9 h-9 rounded-full bg-slate-900/80 border border-slate-700 flex items-center justify-center text-slate-300">
+            <button className="w-9 h-9 rounded-full glass border border-gold/20 flex items-center justify-center text-ivory">
               <Menu className="w-[18px] h-[18px]" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-slate-900 border-slate-700 text-slate-100">
-            <DropdownMenuItem asChild><Link to="/" className="flex items-center gap-2"><HomeIcon className="w-4 h-4 text-amber-400" />首页</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link to="/training" className="flex items-center gap-2"><Target className="w-4 h-4 text-amber-400" />训练中心</Link></DropdownMenuItem>
+          <DropdownMenuContent className="glass text-ivory">
+            <DropdownMenuItem asChild><Link to="/" className="flex items-center gap-2"><HomeIcon className="w-4 h-4 text-gold" />首页</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link to="/training" className="flex items-center gap-2"><Target className="w-4 h-4 text-gold" />训练中心</Link></DropdownMenuItem>
             <DropdownMenuItem asChild><Link to="/blackjack" className="flex items-center gap-2"><Club className="w-4 h-4 text-emerald-400" />21点训练室</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link to="/room" className="flex items-center gap-2"><Users className="w-4 h-4 text-sky-400" />好友房</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link to="/room" className="flex items-center gap-2"><Users className="w-4 h-4 text-gold" />好友房</Link></DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setShowRules(true)}><BookOpen className="w-4 h-4 text-violet-400 mr-2" />规则与术语</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <div className="flex items-center gap-1.5 text-sm font-bold tracking-widest text-slate-300">
+        <div className="flex items-center gap-1.5 text-sm font-bold tracking-widest text-ivory">
           <Spade className="w-4 h-4 text-emerald-400" />德州训练场
         </div>
 
@@ -302,23 +302,23 @@ export default function PokerTrainer() {
             className={cn('w-9 h-9 rounded-full border flex items-center justify-center transition-all',
               coachOn
                 ? 'bg-emerald-900/80 border-emerald-600 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.45)]'
-                : 'bg-slate-900/80 border-slate-700 text-slate-500')}>
+                : 'glass border-gold/20 text-ivory/40')}>
             <GraduationCap className="w-[18px] h-[18px]" />
           </button>
           <button onClick={toggleSound} title="音效"
-            className="w-9 h-9 rounded-full bg-slate-900/80 border border-slate-700 flex items-center justify-center text-slate-300">
-            {soundOn ? <Volume2 className="w-[18px] h-[18px]" /> : <VolumeX className="w-[18px] h-[18px] text-slate-500" />}
+            className="w-9 h-9 rounded-full glass border border-gold/20 flex items-center justify-center text-ivory">
+            {soundOn ? <Volume2 className="w-[18px] h-[18px]" /> : <VolumeX className="w-[18px] h-[18px] text-ivory/40" />}
           </button>
           <Popover>
             <PopoverTrigger asChild>
               <button title="设置"
-                className="w-9 h-9 rounded-full bg-slate-900/80 border border-slate-700 flex items-center justify-center text-slate-300">
+                className="w-9 h-9 rounded-full glass border border-gold/20 flex items-center justify-center text-ivory">
                 <Settings className="w-[18px] h-[18px]" />
               </button>
             </PopoverTrigger>
-            <PopoverContent className="bg-slate-900 border-slate-700 text-slate-100 w-56 text-sm">
+            <PopoverContent className="glass text-ivory w-56 text-sm">
               <p className="font-bold mb-2">牌桌设置</p>
-              <p className="text-xs text-slate-400 mb-1.5">盲注（最低下注）</p>
+              <p className="text-xs text-ivory/60 mb-1.5">盲注（最低下注）</p>
               <div className="grid grid-cols-2 gap-1.5">
                 {BLIND_OPTIONS.map(([sb, bb]) => (
                   <button key={bb}
@@ -328,35 +328,35 @@ export default function PokerTrainer() {
                     }}
                     className={cn('rounded-lg border px-2 py-1.5 text-xs font-mono transition',
                       blinds[1] === bb
-                        ? 'border-amber-500 bg-amber-950/60 text-amber-300'
-                        : 'border-slate-700 bg-slate-800/60 text-slate-300 hover:border-slate-500')}>
+                        ? 'border-gold bg-gold/15 text-gold'
+                        : 'border-gold/20 bg-ink-light text-ivory hover:border-gold/40')}>
                     {sb} / {bb}
                   </button>
                 ))}
               </div>
-              <p className="text-[10px] text-slate-500 mt-2">从下一手牌开始生效</p>
+              <p className="text-[10px] text-ivory/40 mt-2">从下一手牌开始生效</p>
             </PopoverContent>
           </Popover>
           <Popover>
             <PopoverTrigger asChild>
-              <button className="rounded-full bg-slate-900/80 border border-amber-700 px-3 py-1.5 text-sm font-bold text-amber-300 flex items-center gap-1.5">
+              <button className="rounded-full glass border border-gold/40 px-3 py-1.5 text-sm font-bold text-gold flex items-center gap-1.5">
                 <Coins className="w-4 h-4" />{profile.points.toLocaleString()}
               </button>
             </PopoverTrigger>
-            <PopoverContent className="bg-slate-900 border-slate-700 text-slate-100 w-64 text-sm">
-              <p className="font-bold mb-2 flex items-center gap-1.5"><Trophy className="w-4 h-4 text-amber-400" />我的战绩</p>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-300">
-                <span className="text-slate-500">积分</span><span className="text-amber-300 font-mono">{profile.points.toLocaleString()}</span>
-                <span className="text-slate-500">手数</span><span>{profile.handsPlayed}</span>
-                <span className="text-slate-500">胜率</span><span>{profile.handsPlayed ? Math.round(profile.handsWon / profile.handsPlayed * 100) : 0}%</span>
-                <span className="text-slate-500">总盈亏</span><span>{profile.totalProfit >= 0 ? '+' : ''}{profile.totalProfit}</span>
-                <span className="text-slate-500">最大底池</span><span>{profile.biggestPot}</span>
-                <span className="text-slate-500">决策准确率</span>
+            <PopoverContent className="glass text-ivory w-64 text-sm">
+              <p className="font-bold mb-2 flex items-center gap-1.5"><Trophy className="w-4 h-4 text-gold" />我的战绩</p>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-ivory">
+                <span className="text-ivory/40">积分</span><span className="text-gold font-mono">{profile.points.toLocaleString()}</span>
+                <span className="text-ivory/40">手数</span><span>{profile.handsPlayed}</span>
+                <span className="text-ivory/40">胜率</span><span>{profile.handsPlayed ? Math.round(profile.handsWon / profile.handsPlayed * 100) : 0}%</span>
+                <span className="text-ivory/40">总盈亏</span><span>{profile.totalProfit >= 0 ? '+' : ''}{profile.totalProfit}</span>
+                <span className="text-ivory/40">最大底池</span><span>{profile.biggestPot}</span>
+                <span className="text-ivory/40">决策准确率</span>
                 <span>{profile.excellentActions + profile.mistakes > 0
                   ? Math.round(profile.excellentActions / (profile.excellentActions + profile.mistakes) * 100) + '%' : '—'}</span>
               </div>
               {profile.points < BUY_IN && (
-                <Button size="sm" className="w-full mt-3 bg-amber-600 hover:bg-amber-500" onClick={relief}>
+                <Button size="sm" className="w-full mt-3 bg-gradient-to-b from-gold-light to-gold hover:from-gold hover:to-gold-dark text-ink" onClick={relief}>
                   领取补给 +{DAILY_BONUS}
                 </Button>
               )}
@@ -368,13 +368,24 @@ export default function PokerTrainer() {
       {/* ===== 牌桌 ===== */}
       <main className="flex-1 relative flex items-center justify-center px-2">
         <div className="relative w-[min(96vw,820px)] aspect-[1.55/1] sm:aspect-[2.1/1]">
-          {/* 桌面呢绒：多层渐变 + 木质桌沿 + 外发光（纵向内缩，给座位让位） */}
-          <div className="absolute inset-x-0 top-[9%] bottom-[9%] rounded-[2.5rem] border-[10px] border-[#4a3325]
-            bg-[radial-gradient(ellipse_at_center_top,#1A7A52_0%,#0E5C3A_35%,#084A2D_75%,#053822_100%)]
-            shadow-[inset_0_20px_60px_rgba(0,0,0,0.4),inset_0_-10px_30px_rgba(0,0,0,0.3),0_0_80px_rgba(14,92,58,0.35)]" />
-          {/* 桌面中心聚光光斑 */}
-          <div className="absolute left-1/2 top-[38%] -translate-x-1/2 -translate-y-1/2 w-2/5 h-1/3 rounded-[50%] pointer-events-none"
-            style={{ background: 'radial-gradient(ellipse, rgba(255,255,200,0.09) 0%, transparent 70%)' }} />
+          {/* 桌面：木质立体桌沿 + 绒布呢面 + 中心聚光 + 暗角（纵向内缩，给座位让位） */}
+          <div className="absolute inset-x-0 top-[9%] bottom-[9%] rounded-[2.6rem] p-[9px]
+            bg-[linear-gradient(150deg,#6b4226_0%,#3a2616_48%,#241509_100%)]
+            shadow-[0_20px_55px_rgba(0,0,0,0.65),inset_0_0_0_1px_rgba(255,255,255,0.06)]">
+            <div className="relative w-full h-full rounded-[2rem] overflow-hidden
+              bg-[radial-gradient(ellipse_at_center_top,#1f8f60_0%,#0E5C3A_38%,#084A2D_72%,#04301d_100%)]
+              shadow-[inset_0_26px_74px_rgba(0,0,0,0.55),inset_0_-14px_36px_rgba(0,0,0,0.4)]">
+              {/* 绒布细噪点 */}
+              <div className="absolute inset-0 opacity-[0.07] mix-blend-overlay pointer-events-none"
+                style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.7) 1px,transparent 1px)', backgroundSize: '4px 4px' }} />
+              {/* 中心聚光光斑 */}
+              <div className="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2 w-3/5 h-2/5 rounded-[50%] pointer-events-none"
+                style={{ background: 'radial-gradient(ellipse, rgba(255,255,210,0.13) 0%, transparent 70%)' }} />
+              {/* 暗角 */}
+              <div className="absolute inset-0 rounded-[2rem] pointer-events-none"
+                style={{ boxShadow: 'inset 0 0 70px 18px rgba(0,0,0,0.45)' }} />
+            </div>
+          </div>
 
           {/* 结算：底池筹码滑向赢家 */}
           {potFly && (
@@ -386,7 +397,7 @@ export default function PokerTrainer() {
 
           {!game ? (
             <div className="absolute inset-0 flex items-center justify-center">
-              <Button size="lg" className="bg-amber-600 hover:bg-amber-500 text-lg px-10 h-14 rounded-full shadow-xl"
+              <Button size="lg" className="bg-gradient-to-b from-gold-light to-gold hover:from-gold hover:to-gold-dark text-ink text-lg px-10 h-14 rounded-full shadow-xl"
                 onClick={() => startHand(dealerIdx)}>
                 开始训练<span className="text-xs opacity-80 ml-2">盲注 {blinds[0]}/{blinds[1]}</span>
               </Button>
@@ -414,11 +425,11 @@ export default function PokerTrainer() {
                 </div>
                 {game.street === 'handOver' && (
                   <div className="flex flex-col items-center gap-1.5 mt-1">
-                    <p className="text-xs text-slate-200 bg-black/60 rounded-full px-3 py-1 max-w-72 text-center">{game.handOverInfo}</p>
+                    <p className="text-xs text-ivory bg-black/60 rounded-full px-3 py-1 max-w-72 text-center">{game.handOverInfo}</p>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" className="border-slate-500 text-slate-200"
+                      <Button size="sm" variant="outline" className="border-gold/30 text-ivory hover:border-gold/60"
                         onClick={() => setShowReview(true)}>复盘</Button>
-                      <Button size="sm" className="bg-amber-600 hover:bg-amber-500" onClick={nextHand}>下一手 ▶</Button>
+                      <Button size="sm" className="bg-gradient-to-b from-gold-light to-gold hover:from-gold hover:to-gold-dark text-ink" onClick={nextHand}>下一手 ▶</Button>
                     </div>
                   </div>
                 )}
@@ -447,17 +458,17 @@ export default function PokerTrainer() {
                   </div>
                   <div className="flex flex-col items-center gap-1">
                   <div className={cn('flex items-center gap-1.5 rounded-full bg-black/70 pl-1 pr-2.5 py-1 border',
-                    game.actingIdx === p.id ? 'border-2 border-gold' : 'border-slate-700',
-                    game.street === 'handOver' && game.winners?.some(w => w.playerId === p.id) && 'anim-winner border-amber-300')}>
-                    <span className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-sm relative">
+                    game.actingIdx === p.id ? 'border-2 border-gold' : 'border-gold/20',
+                    game.street === 'handOver' && game.winners?.some(w => w.playerId === p.id) && 'anim-winner border-gold')}>
+                    <span className="w-7 h-7 rounded-full bg-ink-light flex items-center justify-center text-sm relative">
                       {STYLE_EMOJI[p.style] ?? '🤖'}
                       {game.dealerIdx === p.id && (
-                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 text-[8px] text-black font-bold flex items-center justify-center">D</span>
+                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-gold text-[8px] text-black font-bold flex items-center justify-center">D</span>
                       )}
                     </span>
                     <div className="leading-tight">
                       <div className="text-[11px] font-semibold whitespace-nowrap">{p.name}</div>
-                      <div className="text-[10px] text-amber-300 font-mono">{p.chips}</div>
+                      <div className="text-[10px] text-gold font-mono">{p.chips}</div>
                     </div>
                   </div>
                   {game.actingIdx === p.id && game.street !== 'handOver' && (
@@ -472,13 +483,13 @@ export default function PokerTrainer() {
                   {p.streetBet > 0 && (
                     <span key={p.streetBet} className="anim-chip inline-flex items-center gap-1 bg-black/70 rounded-full pl-0.5 pr-1.5 py-0.5">
                       <Chip size={15} />
-                      <span className="text-[10px] font-mono text-amber-300 font-bold">{p.streetBet}</span>
+                      <span className="text-[10px] font-mono text-gold font-bold">{p.streetBet}</span>
                     </span>
                   )}
                   </div>
                   {p.lastAction && (
                     <div key={`${p.id}-${p.lastAction}-${game.actingIdx}`}
-                      className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] bg-sky-600/90 rounded-full px-2 py-0.5 whitespace-nowrap anim-pop">
+                      className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] bg-gold/90 rounded-full px-2 py-0.5 whitespace-nowrap anim-pop">
                       {p.lastAction}
                     </div>
                   )}
@@ -490,28 +501,28 @@ export default function PokerTrainer() {
               <div className="absolute left-1/2 -translate-x-1/2 bottom-[-4%] flex flex-col items-center gap-1">
                 {game.players[0].lastAction && (
                   <div key={`hero-${game.players[0].lastAction}-${game.actingIdx}`}
-                    className="text-[10px] bg-sky-600/90 rounded-full px-2 py-0.5 whitespace-nowrap anim-pop">
+                    className="text-[10px] bg-gold/90 rounded-full px-2 py-0.5 whitespace-nowrap anim-pop">
                     {game.players[0].lastAction}
                   </div>
                 )}
                 <div className={cn('flex items-center gap-1.5 rounded-full bg-black/70 pl-1 pr-2.5 py-1 border',
-                  game.actingIdx === 0 && game.street !== 'handOver' ? 'border-2 border-gold' : 'border-slate-700',
-                  game.street === 'handOver' && game.winners?.some(w => w.playerId === 0) && 'anim-winner border-amber-300')}>
+                  game.actingIdx === 0 && game.street !== 'handOver' ? 'border-2 border-gold' : 'border-gold/20',
+                  game.street === 'handOver' && game.winners?.some(w => w.playerId === 0) && 'anim-winner border-gold')}>
                   <span className="w-7 h-7 rounded-full bg-gradient-to-br from-gold to-gold-dark flex items-center justify-center text-sm relative">
                     {avatar}
                     {game.dealerIdx === 0 && (
-                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 text-[8px] text-black font-bold flex items-center justify-center">D</span>
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-gold text-[8px] text-black font-bold flex items-center justify-center">D</span>
                     )}
                   </span>
                   <div className="leading-tight">
                     <div className="text-[11px] font-semibold whitespace-nowrap">{nickname}</div>
-                    <div className="text-[10px] text-amber-300 font-mono num">{game.players[0].chips}</div>
+                    <div className="text-[10px] text-gold font-mono num">{game.players[0].chips}</div>
                   </div>
                 </div>
                 {game.players[0].streetBet > 0 && (
                   <span key={`hero-bet-${game.players[0].streetBet}`} className="anim-chip inline-flex items-center gap-1 bg-black/70 rounded-full pl-0.5 pr-1.5 py-0.5">
                     <Chip size={15} />
-                    <span className="text-[10px] font-mono text-amber-300 font-bold">{game.players[0].streetBet}</span>
+                    <span className="text-[10px] font-mono text-gold font-bold">{game.players[0].streetBet}</span>
                   </span>
                 )}
               </div>
@@ -557,12 +568,12 @@ export default function PokerTrainer() {
                       : advice.recommendation === 'fold' ? '建议弃牌'
                       : advice.recommendation === 'call' ? '建议跟注' : '建议过牌'}
                   </span>
-                  {advice.equity && <span className="text-sky-300 font-mono">胜率 {(advice.equity.equity * 100).toFixed(0)}%</span>}
-                  <span className="text-slate-500">详情 ›</span>
+                  {advice.equity && <span className="text-gold font-mono">胜率 {(advice.equity.equity * 100).toFixed(0)}%</span>}
+                  <span className="text-ivory/40">详情 ›</span>
                 </button>
               </SheetTrigger>
-              <SheetContent side="right" className="bg-slate-950 border-slate-800 text-slate-100 w-full sm:max-w-md overflow-y-auto">
-                <SheetHeader><SheetTitle className="text-slate-100">🎓 教练分析</SheetTitle></SheetHeader>
+              <SheetContent side="right" className="bg-ink border-gold/20 text-ivory w-full sm:max-w-md overflow-y-auto">
+                <SheetHeader><SheetTitle className="text-ivory">🎓 教练分析</SheetTitle></SheetHeader>
                 <Tabs defaultValue="coach" className="mt-2">
                   <TabsList className="w-full">
                     <TabsTrigger value="coach" className="flex-1">教练</TabsTrigger>
@@ -594,40 +605,40 @@ export default function PokerTrainer() {
                 <div className="flex items-center gap-3 w-full px-4">
                   <Slider className="flex-1" min={la!.minRaiseTo} max={la!.maxRaiseTo} step={10}
                     value={[raiseAmt]} onValueChange={v => setRaiseAmt(v[0])} />
-                  <span className="font-mono font-bold text-amber-300 w-16 text-right">{raiseAmt}</span>
+                  <span className="font-mono font-bold text-gold w-16 text-right">{raiseAmt}</span>
                 </div>
               )}
               <div className="flex items-center gap-2 justify-center">
                 {(la!.canFold || la!.canCall) && (
-                  <Button className="rounded-xl h-12 px-6 bg-danger hover:bg-red-600 text-base font-semibold" onClick={() => heroAct('fold')}>弃牌</Button>
+                  <Button className="rounded-xl h-12 px-6 bg-gradient-to-b from-danger to-[#c62828] hover:from-[#ef5350] hover:to-danger text-white shadow-[0_6px_16px_rgba(229,57,53,0.4)] text-base font-semibold" onClick={() => heroAct('fold')}>弃牌</Button>
                 )}
                 {la!.canCheck && (
-                  <Button className="rounded-xl h-12 px-6 bg-ink-light hover:bg-ink-card border border-gold-dark/40 text-ivory text-base font-semibold" onClick={() => heroAct('check')}>过牌</Button>
+                  <Button className="rounded-xl h-12 px-6 bg-ink-light hover:bg-ink-card border border-gold-dark/50 text-ivory text-base font-semibold shadow-md" onClick={() => heroAct('check')}>过牌</Button>
                 )}
                 {la!.canCall && (
-                  <Button className="rounded-xl h-12 px-6 bg-ink-light hover:bg-ink-card border border-gold-dark/40 text-ivory text-base font-semibold" onClick={() => heroAct('call')}>
+                  <Button className="rounded-xl h-12 px-6 bg-ink-light hover:bg-ink-card border border-gold-dark/50 text-ivory text-base font-semibold shadow-md" onClick={() => heroAct('call')}>
                     跟注 {la!.callAmount}
                   </Button>
                 )}
                 {la!.canRaise && !showRaise && (
-                  <Button className="rounded-xl h-12 px-6 bg-gold hover:bg-gold-light text-ink text-base font-bold" onClick={() => setShowRaise(true)}>
+                  <Button className="rounded-xl h-12 px-6 bg-gradient-to-b from-gold-light to-gold hover:from-gold hover:to-gold-dark text-ink text-base font-bold" onClick={() => setShowRaise(true)}>
                     加注
                   </Button>
                 )}
                 {la!.canRaise && showRaise && (
                   <>
-                    <Button className="rounded-xl h-12 px-5 bg-gold hover:bg-gold-light text-ink text-base font-bold"
+                    <Button className="rounded-xl h-12 px-5 bg-gradient-to-b from-gold-light to-gold hover:from-gold hover:to-gold-dark text-ink text-base font-bold"
                       onClick={() => heroAct(raiseAmt >= la!.maxRaiseTo ? 'allin' : game.currentBet > 0 ? 'raise' : 'bet', raiseAmt)}>
                       {raiseAmt >= la!.maxRaiseTo ? `全下 ${raiseAmt}` : `加到 ${raiseAmt}`}
                     </Button>
-                    <Button variant="ghost" className="rounded-xl text-slate-400" onClick={() => setShowRaise(false)}>收起</Button>
+                    <Button variant="ghost" className="rounded-xl text-ivory/60" onClick={() => setShowRaise(false)}>收起</Button>
                   </>
                 )}
               </div>
             </div>
           )}
           {!heroTurn && game.street !== 'handOver' && game.street !== 'showdown' && (
-            <p className="text-[11px] text-slate-500 h-6">等待其他玩家行动…</p>
+            <p className="text-[11px] text-ivory/40 h-6">等待其他玩家行动…</p>
           )}
         </footer>
       )}
@@ -661,7 +672,7 @@ export default function PokerTrainer() {
 
       {/* 复盘弹窗 */}
       <Dialog open={showReview} onOpenChange={setShowReview}>
-        <DialogContent className="bg-slate-900 border-slate-700 text-slate-100 max-w-lg">
+        <DialogContent className="glass text-ivory max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
               本手复盘
@@ -672,7 +683,7 @@ export default function PokerTrainer() {
               )}
             </DialogTitle>
           </DialogHeader>
-          {handResult && <p className="text-sm text-slate-300">{handResult.info}</p>}
+          {handResult && <p className="text-sm text-ivory">{handResult.info}</p>}
           <ReviewList actions={gradedActions} />
         </DialogContent>
       </Dialog>
@@ -681,15 +692,15 @@ export default function PokerTrainer() {
 }
 
 function ReviewHistory({ reviews }: { reviews: ReturnType<typeof loadReviews> }) {
-  if (reviews.length === 0) return <p className="text-xs text-slate-500">打完的手牌会在这里生成复盘记录。</p>;
+  if (reviews.length === 0) return <p className="text-xs text-ivory/40">打完的手牌会在这里生成复盘记录。</p>;
   return (
     <div className="space-y-3">
       {reviews.slice(0, 10).map((r, i) => (
-        <details key={i} className="rounded-lg bg-slate-800/60 border border-slate-700 p-2">
+        <details key={i} className="rounded-lg bg-ink-light border border-gold/20 p-2">
           <summary className="text-xs cursor-pointer flex items-center gap-2">
-            <span className="text-slate-400">#{r.handNumber}</span>
+            <span className="text-ivory/60">#{r.handNumber}</span>
             <span className="font-semibold">{r.heroCards}</span>
-            <span className="text-slate-500">{r.position.split(' ')[0]}</span>
+            <span className="text-ivory/40">{r.position.split(' ')[0]}</span>
             <span className={cn('ml-auto font-mono font-bold', r.result >= 0 ? 'text-emerald-400' : 'text-red-400')}>
               {r.result >= 0 ? '+' : ''}{r.result}
             </span>

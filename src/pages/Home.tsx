@@ -154,7 +154,7 @@ export default function Home() {
             fullWidth
             variant="secondary"
             onClick={() => navigate('/blackjack')}
-            className="!py-3 bg-gradient-to-r from-pink-900/40 to-red-900/40 border-pink-700/50"
+            className="!py-3 bg-gradient-to-r from-red-900/40 to-red-950/50 border-red-700/50"
           >
             <div className="flex items-center gap-3">
               <span className="text-2xl">🃏</span>
