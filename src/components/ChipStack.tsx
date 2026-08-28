@@ -99,18 +99,29 @@ export function Chip({ amount, size = 26, className }: { amount?: number; size?:
   );
 }
 
-/** 筹码堆：按金额叠放 1~5 枚，顶层带面值 */
+/** 筹码堆：按金额叠放 1~5 枚，数字显示在筹码堆右侧，避免遮挡筹码面值 */
 export function ChipStack({ amount, size = 26, className }: { amount: number; size?: number; className?: string }) {
   const count = amount <= 0 ? 0 : Math.min(5, Math.max(1, Math.ceil(amount / 1000)));
   const step = Math.max(2.5, size * 0.12);
   return (
-    <span className={cn('relative inline-block', className)}
-      style={{ width: size, height: size + (count - 1) * step }}>
-      {Array.from({ length: count }).map((_, i) => (
-        <span key={i} className="absolute left-0" style={{ bottom: i * step, zIndex: i }}>
-          <Chip amount={i === count - 1 ? amount : undefined} size={size} />
-        </span>
-      ))}
+    <span className={cn('relative inline-flex items-center gap-1.5', className)}>
+      <span className="relative inline-block"
+        style={{ width: size, height: size + (count - 1) * step }}>
+        {Array.from({ length: count }).map((_, i) => (
+          <span key={i} className="absolute left-0" style={{ bottom: i * step, zIndex: i }}>
+            <Chip size={size} />
+          </span>
+        ))}
+      </span>
+      <span
+        className="font-bold whitespace-nowrap"
+        style={{
+          color: '#f0c46e',
+          fontSize: size * 0.42,
+          textShadow: '0 1px 3px rgba(0,0,0,0.75)',
+        }}>
+        {fmt(amount)}
+      </span>
     </span>
   );
 }
