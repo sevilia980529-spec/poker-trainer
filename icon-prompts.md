@@ -11,7 +11,7 @@
 
 ---
 
-## 一、界面选项里缺图、建议必做的（6 个）
+## 一、界面选项里缺图、建议必做的（6 个）✅ 已完成
 
 | 文件名 | name | 用在哪 | 主体描述（拼在规范前后缀之间） |
 |---|---|---|---|
@@ -47,9 +47,11 @@
 
 线性图标（已有 PNG）：arrow-left / arrow-right / arrow-down / bulb / target / joker / fire / graduation / party / crown / book / coins / check / cross / medal-bronze / medal-silver / medal-gold / gem / gem-blue / star / fox / leopard / capybara / owl / collie / pig / rock / scale / spade / heart / diamond / club。
 
+选项图标（已有 PNG）：seedling / zap / cards / ruler / robot / people。
+
 筹码图（已有，已接入 ChipStack）：chip-10 / 20 / 50 / 100 / 500 / 1000。
 
-用户头像（已有 12 张，已修复下移居中，待 push）：avatars/1.png ~ 12.png。
+用户头像（已有 12 张，已修复下移居中，已 push）：avatars/1.png ~ 12.png。
 
 ---
 
