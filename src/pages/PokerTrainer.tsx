@@ -378,7 +378,7 @@ export default function PokerTrainer() {
             bg-[linear-gradient(150deg,#6b4226_0%,#3a2616_48%,#241509_100%)]
             shadow-[0_20px_55px_rgba(0,0,0,0.65),inset_0_0_0_1px_rgba(255,255,255,0.06)]">
             <div className="relative w-full h-full rounded-[2rem] overflow-hidden
-              bg-[radial-gradient(ellipse_at_center_top,#1f8f60_0%,#0E5C3A_38%,#084A2D_72%,#04301d_100%)]
+              bg-[url('/images/bg-table-felt.png')] bg-cover bg-center
               shadow-[inset_0_26px_74px_rgba(0,0,0,0.55),inset_0_-14px_36px_rgba(0,0,0,0.4)]">
               {/* 绒布细噪点 */}
               <div className="absolute inset-0 opacity-[0.07] mix-blend-overlay pointer-events-none"

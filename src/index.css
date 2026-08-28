@@ -73,6 +73,10 @@
     @apply bg-background text-foreground;
     background-color: #0A0A0A;
     color: #F5EFE0;
+    background-image: url('/images/bg-dark-cards.png');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
   }
 }
 /* ===== 牌桌动效 ===== */
