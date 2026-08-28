@@ -33,7 +33,7 @@ function fmt(n: number): string {
 }
 
 /** 独立 CSS 筹码（图片加载失败回退） */
-function CssChip({ amount, size, className }: { amount?: number; size: number; className?: string }) {
+function CssChip({ amount, size, className, showLabel = true }: { amount?: number; size: number; className?: string; showLabel?: boolean }) {
   const c = chipColor(amount ?? 0);
   const wall = Math.max(3, size * 0.18);
   return (
@@ -57,19 +57,19 @@ function CssChip({ amount, size, className }: { amount?: number; size: number; c
             maskImage: 'radial-gradient(circle closest-side, transparent 60%, black 62%)',
           }} />
         <span className="absolute rounded-full" style={{ inset: size * 0.16, border: '1.5px dashed rgba(255,255,255,0.45)' }} />
-        {amount !== undefined && <span className="relative z-10 drop-shadow-sm">{fmt(amount)}</span>}
+        {amount !== undefined && showLabel && <span className="relative z-10 drop-shadow-sm">{fmt(amount)}</span>}
       </span>
     </span>
   );
 }
 
-export function Chip({ amount, size = 26, className }: { amount?: number; size?: number; className?: string }) {
+export function Chip({ amount, size = 26, className, exact = false, showLabel = true }: { amount?: number; size?: number; className?: string; exact?: boolean; showLabel?: boolean }) {
   const [errored, setErrored] = useState(false);
-  const denom = getDenom(amount ?? 0);
+  const denom = exact && amount !== undefined ? amount : getDenom(amount ?? 0);
   const src = `/icons/chip-${denom}.png`;
 
   if (errored) {
-    return <CssChip amount={amount} size={size} className={className} />;
+    return <CssChip amount={amount} size={size} className={className} showLabel={showLabel} />;
   }
 
   return (
@@ -84,7 +84,7 @@ export function Chip({ amount, size = 26, className }: { amount?: number; size?:
         style={{ width: size, height: size }}
         onError={() => setErrored(true)}
       />
-      {amount !== undefined && (
+      {amount !== undefined && showLabel && (
         <span
           className="absolute inset-0 flex items-center justify-center font-bold"
           style={{

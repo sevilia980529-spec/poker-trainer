@@ -17,7 +17,7 @@ import { ArrowLeft } from 'lucide-react';
 import { cn } from '../lib/utils';
 import Icon from '../components/Icon';
 
-const BET_OPTIONS = [50, 100, 200, 500];
+const BET_OPTIONS = [50, 199, 500, 1000];
 const ACTION_LABEL: Record<string, string> = { hit: '要牌', stand: '停牌', double: '双倍', split: '分牌' };
 
 interface ActionLog { hand: number; action: string; correct: boolean; why: string }
@@ -286,7 +286,7 @@ export default function Blackjack() {
                       bet === b
                         ? '-translate-y-1.5 scale-105 drop-shadow-[0_6px_8px_rgba(0,0,0,0.5)]'
                         : 'opacity-60 hover:opacity-90')}>
-                    <Chip amount={b} size={48} />
+                    <Chip amount={b} exact showLabel={false} size={48} />
                   </button>
                 ))}
               </div>
