@@ -323,7 +323,7 @@ export default function FriendRoom() {
                     {/* 下注徽章：统一在名字正下方 */}
                     {p.streetBet > 0 && (
                       <span key={p.streetBet} className="anim-chip inline-flex items-center gap-1 bg-black/70 rounded-full pl-0.5 pr-1.5 py-0.5">
-                        <Chip size={15} />
+                        <Chip exact amount={100} size={15} showLabel={false} />
                         <span className="text-[10px] font-mono text-amber-300 font-bold">{p.streetBet}</span>
                       </span>
                     )}
@@ -368,7 +368,7 @@ export default function FriendRoom() {
                   </div>
                   {game.players[youId].streetBet > 0 && (
                     <span key={`hero-bet-${game.players[youId].streetBet}`} className="anim-chip inline-flex items-center gap-1 bg-black/70 rounded-full pl-0.5 pr-1.5 py-0.5">
-                      <Chip size={15} />
+                      <Chip exact amount={100} size={15} showLabel={false} />
                       <span className="text-[10px] font-mono text-amber-300 font-bold">{game.players[youId].streetBet}</span>
                     </span>
                   )}

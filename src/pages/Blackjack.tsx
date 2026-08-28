@@ -17,7 +17,21 @@ import { ArrowLeft } from 'lucide-react';
 import { cn } from '../lib/utils';
 import Icon from '../components/Icon';
 
-const BET_OPTIONS = [50, 199, 500, 1000];
+const BET_OPTIONS = [50, 100, 200, 500];
+
+/** 竖直叠放的筹码（如 200 = 两枚 100 叠在一起） */
+function StackedChips({ amount, size, count }: { amount: number; size: number; count: number }) {
+  const step = size * 0.2;
+  return (
+    <span className="relative inline-block" style={{ width: size, height: size + (count - 1) * step }}>
+      {Array.from({ length: count }).map((_, i) => (
+        <span key={i} className="absolute left-0 drop-shadow-[0_2px_3px_rgba(0,0,0,0.45)]" style={{ bottom: i * step, zIndex: i }}>
+          <Chip exact amount={amount} size={size} showLabel={false} />
+        </span>
+      ))}
+    </span>
+  );
+}
 const ACTION_LABEL: Record<string, string> = { hit: '要牌', stand: '停牌', double: '双倍', split: '分牌' };
 
 interface ActionLog { hand: number; action: string; correct: boolean; why: string }
@@ -224,7 +238,7 @@ export default function Blackjack() {
                       {game.hands.length > 1 ? `第${i + 1}手 · ` : ''}{v.value} 点{v.soft ? '（软）' : ''}
                     </span>
                     <span className="inline-flex items-center gap-1 text-amber-300/90 font-mono">
-                      <Chip size={14} />{h.bet}
+                      <Chip exact amount={100} size={14} showLabel={false} />{h.bet}
                     </span>
                     {h.result && settled && (
                       <span className={cn('font-bold',
@@ -286,7 +300,7 @@ export default function Blackjack() {
                       bet === b
                         ? '-translate-y-1.5 scale-105 drop-shadow-[0_6px_8px_rgba(0,0,0,0.5)]'
                         : 'opacity-60 hover:opacity-90')}>
-                    <Chip amount={b} exact showLabel={false} size={48} />
+                    {b === 200 ? <StackedChips amount={100} size={48} count={2} /> : <Chip amount={b} exact showLabel={false} size={48} />}
                   </button>
                 ))}
               </div>

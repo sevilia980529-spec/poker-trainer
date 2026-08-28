@@ -490,7 +490,7 @@ export default function PokerTrainer() {
                   {/* 下注徽章：统一在名字正下方 */}
                   {p.streetBet > 0 && (
                     <span key={p.streetBet} className="anim-chip inline-flex items-center gap-1 bg-black/70 rounded-full pl-0.5 pr-1.5 py-0.5">
-                      <Chip size={15} />
+                      <Chip exact amount={100} size={15} showLabel={false} />
                       <span className="text-[10px] font-mono text-gold font-bold">{p.streetBet}</span>
                     </span>
                   )}
@@ -531,7 +531,7 @@ export default function PokerTrainer() {
                 </div>
                   {game.players[0].streetBet > 0 && (
                     <span key={`hero-bet-${game.players[0].streetBet}`} className="anim-chip inline-flex items-center gap-1 bg-black/70 rounded-full pl-0.5 pr-1.5 py-0.5">
-                      <Chip size={15} />
+                      <Chip exact amount={100} size={15} showLabel={false} />
                       <span className="text-[10px] font-mono text-gold font-bold"><AnimatedNumber value={game.players[0].streetBet} /></span>
                     </span>
                   )}

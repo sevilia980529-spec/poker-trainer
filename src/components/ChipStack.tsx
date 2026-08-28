@@ -101,7 +101,8 @@ export function Chip({ amount, size = 26, className, exact = false, showLabel = 
 
 /** 筹码堆：按金额叠放 1~5 枚，数字显示在筹码堆右侧，避免遮挡筹码面值 */
 export function ChipStack({ amount, size = 26, className }: { amount: number; size?: number; className?: string }) {
-  const count = amount <= 0 ? 0 : Math.min(5, Math.max(1, Math.ceil(amount / 1000)));
+  // 总筹码堆统一用 100 面值筹码叠放（最多 5 枚，真实金额显示在右侧）
+  const count = amount <= 0 ? 0 : Math.min(5, Math.max(1, Math.round(amount / 100)));
   const step = Math.max(2.5, size * 0.12);
   return (
     <span className={cn('relative inline-flex items-center gap-1.5', className)}>
@@ -109,7 +110,7 @@ export function ChipStack({ amount, size = 26, className }: { amount: number; si
         style={{ width: size, height: size + (count - 1) * step }}>
         {Array.from({ length: count }).map((_, i) => (
           <span key={i} className="absolute left-0" style={{ bottom: i * step, zIndex: i }}>
-            <Chip size={size} />
+            <Chip exact amount={100} size={size} showLabel={false} />
           </span>
         ))}
       </span>
