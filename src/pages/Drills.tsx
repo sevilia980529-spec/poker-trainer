@@ -74,8 +74,8 @@ export default function Drills() {
                 onClick={() => { setCategory(c); nextDrill(c); }}
                 className={cn('px-3 py-2 rounded-lg border text-sm transition',
                   category === c
-                    ? 'bg-gold/20 border-gold text-gold-light'
-                    : 'bg-ink-card border-ink-light text-ivory hover:border-ink-light')}>
+                    ? 'bg-white border-gold text-gold shadow-sm'
+                    : 'bg-white/80 border-white/60 text-ink hover:bg-white')}>
                 <div className="font-semibold"><Icon name={info.icon} size={16} className="align-middle" /> {info.name}</div>
                 <div className="text-[10px] text-ivory/40">{info.desc}
                   {cs ? ` · ${cs.correct}/${cs.answered}` : ''}</div>
@@ -115,10 +115,10 @@ export default function Drills() {
               return (
                 <button key={o.value} onClick={() => choose(o.value)} disabled={answered}
                   className={cn('px-4 py-3 rounded-lg border text-left font-semibold transition',
-                    !answered && 'bg-ink-light border-ink-light hover:border-gold hover:bg-ink-light',
-                    isRight && 'bg-emerald-900/50 border-emerald-500 text-emerald-200',
-                    isWrongPick && 'bg-red-900/50 border-red-500 text-red-200',
-                    answered && !isRight && !isWrongPick && 'bg-ink-light/50 border-ink-light text-ivory/40')}>
+                    !answered && 'bg-white border-white/70 text-ink hover:border-gold hover:bg-white',
+                    isRight && 'bg-emerald-600 border-emerald-400 text-white',
+                    isWrongPick && 'bg-red-600 border-red-400 text-white',
+                    answered && !isRight && !isWrongPick && 'bg-white/50 border-white/40 text-ink/50')}>
                   {o.label}
                   {isRight && <Icon e="✅" size={12} className="align-middle" />}
                   {isWrongPick && <Icon e="❌" size={12} className="align-middle" />}
