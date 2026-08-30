@@ -50,16 +50,40 @@ export default function Drills() {
 
   return (
     <div className="min-h-screen bg-ink text-ivory flex flex-col">
-      <header className="flex items-center gap-3 px-4 py-2.5 border-b border-gold/15 bg-ink/70 backdrop-blur flex-wrap safe-top">
-        <Link to="/training" className="text-ivory/60 hover:text-ivory text-sm"><Icon e="←" size={14} className="align-middle" /> 训练中心</Link>
-        <Link to="/" className="text-ivory/60 hover:text-ivory text-sm"><Icon e="🏠" size={14} className="align-middle" /> 首页</Link>
-        <h1 className="text-lg font-bold text-gold"><Icon e="🎯" size={16} className="align-middle" /> 专项训练</h1>
-        <button onClick={() => setShowRules(true)} className="text-ivory/60 hover:text-ivory text-sm"><Icon e="📖" size={14} className="align-middle" /> 规则术语</button>
-        <div className="text-xs text-ivory/60 flex gap-3 ml-auto">
-          <span>已答 {stats.answered}</span>
-          <span>正确率 {acc}%</span>
-          <span>连对 <Icon e="🔥" size={12} className="align-middle" />{stats.streak}</span>
-          <span>最佳连对 {stats.bestStreak}</span>
+      <header className="border-b border-gold/15 bg-ink/70 backdrop-blur safe-top">
+        {/* 顶部导航 */}
+        <div className="flex items-center justify-between px-4 py-3">
+          <Link to="/training" className="flex items-center gap-1 text-sm font-medium text-ivory/70 hover:text-ivory">
+            <Icon e="←" size={16} /> 训练中心
+          </Link>
+          <h1 className="text-xl font-bold text-gold flex items-center gap-1.5">
+            <Icon e="🎯" size={20} /> 专项训练
+          </h1>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowRules(true)} className="p-2 rounded-full glass text-ivory/70 hover:text-gold hover:border-gold/40">
+              <Icon e="📖" size={16} />
+            </button>
+            <Link to="/" className="p-2 rounded-full glass text-ivory/70 hover:text-gold hover:border-gold/40">
+              <Icon e="🏠" size={16} />
+            </Link>
+          </div>
+        </div>
+
+        {/* 数据指标 */}
+        <div className="px-4 pb-3">
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { label: '已答', value: stats.answered },
+              { label: '正确率', value: `${acc}%` },
+              { label: '连对', value: stats.streak },
+              { label: '最佳', value: stats.bestStreak },
+            ].map(s => (
+              <div key={s.label} className="glass rounded-lg px-2 py-2 text-center">
+                <div className="text-[10px] text-ivory/50 leading-none">{s.label}</div>
+                <div className="text-sm font-bold text-gold num mt-1 leading-none">{s.value}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </header>
 
