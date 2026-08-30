@@ -11,6 +11,7 @@ export interface ClientMsg {
   type: 'create' | 'join' | 'start' | 'action' | 'leave';
   name?: string;
   roomId?: string;
+  seatToken?: string;   // 上次加入时的座位凭证（用于中途掉线后原位回归）
   action?: ActionType;
   raiseTo?: number;
 }
@@ -35,6 +36,7 @@ interface Room {
   scores: Map<string, number>;     // 持久分数（跨手累积，可为负）
   seatKeys: string[];              // 当前手牌 playerId → 分数键
   handStartChips: Map<number, number>; // 本手起手筹码（结算用）
+  cleanupTimer?: ReturnType<typeof setTimeout>; // 全员离线后的延迟清理（给重连留窗口）
 }
 
 const AI_FILL_STYLES = ['tag', 'lag', 'station', 'nit', 'balanced'];
@@ -80,9 +82,18 @@ export class RoomManager {
       case 'join': {
         const room = msg.roomId ? this.rooms.get(msg.roomId.toUpperCase()) : undefined;
         if (!room) return this.send(ws, { type: 'error', message: '房间不存在，请检查房间码' });
-        if (room.game) return this.send(ws, { type: 'error', message: '该局已开始，等这手结束后让房主重开' });
-        if (room.humans.filter(h => h.connected).length >= 6) return this.send(ws, { type: 'error', message: '房间已满（6 人）' });
-        this.joinRoom(ws, room, msg.name ?? '玩家');
+        const name = (msg.name ?? '玩家').trim().slice(0, 12) || '玩家';
+        // ① 中途掉线后回归：优先按座位凭证，其次按昵称，认领自己的座位（保留筹码与分数）
+        const ghost = room.humans.find(h =>
+          !h.connected &&
+          ((msg.seatToken && String(h.seatIdx) === msg.seatToken) || h.name === name));
+        if (ghost) return this.reconnect(ws, room, ghost);
+        // ② 牌局进行中：新玩家等这手结束再加入（已结束则可入座，下一手生效）
+        if (room.game && room.game.street !== 'handOver')
+          return this.send(ws, { type: 'error', message: '该局正在进行中，请等这手结束后再加入' });
+        if (room.humans.filter(h => h.connected).length >= 6)
+          return this.send(ws, { type: 'error', message: '房间已满（6 人）' });
+        this.joinRoom(ws, room, name);
         break;
       }
       case 'start': {
@@ -121,8 +132,29 @@ export class RoomManager {
     const seatIdx = room.humans.length;
     room.humans.push({ ws, name: name.slice(0, 12), playerId: -1, seatIdx, connected: true });
     this.wsIndex.set(ws, { roomId: room.id, seatIdx });
+    if (room.cleanupTimer) { clearTimeout(room.cleanupTimer); room.cleanupTimer = undefined; }
     this.send(ws, { type: 'joined', roomId: room.id, seatIdx, isHost: seatIdx === room.hostSeat });
     this.broadcastLobby(room);
+  }
+
+  /** 中途掉线后回归：复用原座位、筹码与分数（不重开牌局） */
+  private reconnect(ws: WebSocket, room: Room, human: Human) {
+    this.wsIndex.delete(human.ws);          // 旧连接作废
+    human.ws = ws;
+    human.connected = true;
+    this.wsIndex.set(ws, { roomId: room.id, seatIdx: human.seatIdx });
+    if (room.cleanupTimer) { clearTimeout(room.cleanupTimer); room.cleanupTimer = undefined; }
+    this.send(ws, {
+      type: 'joined', roomId: room.id, seatIdx: human.seatIdx,
+      isHost: human.seatIdx === room.hostSeat, reconnected: true,
+    });
+    this.broadcastLobby(room);
+    // 牌局中回归：立刻补发当前牌桌（含自己的手牌），否则会卡在大厅
+    if (room.game) {
+      const view = sanitizeState(room.game, human.playerId);
+      const scores = room.game.players.map(p => room.scores.get(room.seatKeys[p.id]) ?? INITIAL_SCORE);
+      this.send(ws, { type: 'state', state: view, yourPlayerId: human.playerId, scores });
+    }
   }
 
   private broadcastLobby(room: Room) {
@@ -202,8 +234,10 @@ export class RoomManager {
       if (!room.game) return;
       const cur = room.game;
       if (cur.actingIdx !== idx || cur.street === 'handOver') return;
+      const seat = room.humans.find(h => h.playerId === idx);
+      if (seat?.connected) return;   // 玩家已重连，交给真人操作（避免刚上线就被托管弃牌）
       let res;
-      if (human && !humanOnline) {
+      if (seat) {
         // 断线托管：能过牌就过牌，否则弃牌
         const la = legalActions(cur, idx);
         res = applyAction(cur, idx, la.canCheck ? 'check' : 'fold');
@@ -242,10 +276,25 @@ export class RoomManager {
       if (room.hostSeat === loc.seatIdx) room.hostSeat = room.humans[0].seatIdx;
       this.broadcastLobby(room);
     } else {
-      // 游戏中断线：广播并托管
+      // 牌局中断线：保留座位等待重连（不踢出、不清分数）
+      // 房主掉线则移交，否则房间会卡在“等房主开下一手”
+      if (room.hostSeat === loc.seatIdx) {
+        const next = room.humans.find(h => h.connected);
+        if (next) room.hostSeat = next.seatIdx;
+      }
       this.broadcastLobby(room);
       this.maybeRunAI(room); // 若正轮到 TA，立即托管
     }
+    this.scheduleCleanup(room);
+  }
+
+  /** 全员离线时延迟销毁房间，给掉线玩家留出重连窗口 */
+  private scheduleCleanup(room: Room) {
+    if (room.cleanupTimer) return;
+    if (room.humans.some(h => h.connected)) return;
+    room.cleanupTimer = setTimeout(() => {
+      if (!room.humans.some(h => h.connected)) this.rooms.delete(room.id);
+    }, 10 * 60 * 1000);
   }
 }
 

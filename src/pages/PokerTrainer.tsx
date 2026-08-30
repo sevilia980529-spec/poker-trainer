@@ -25,7 +25,7 @@ import { ReviewList } from '../components/ReviewList';
 import { RulesGuideDialog } from '../components/RulesGuide';
 import SettlementModal from '../components/SettlementModal';
 import { Button } from '../components/ui/button';
-import { Slider } from '../components/ui/slider';
+import RaisePanel from '../components/RaisePanel';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
@@ -612,11 +612,12 @@ export default function PokerTrainer() {
           {heroTurn && game.street !== 'handOver' && (
             <div className="w-full max-w-lg flex flex-col items-center gap-2">
               {showRaise && la!.canRaise && (
-                <div className="flex items-center gap-3 w-full px-4">
-                  <Slider className="brand-slider flex-1" min={la!.minRaiseTo} max={la!.maxRaiseTo} step={10}
-                    value={[raiseAmt]} onValueChange={v => setRaiseAmt(v[0])} />
-                  <AnimatedNumber value={raiseAmt} className="font-mono font-bold text-gold w-16 text-right inline-block" />
-                </div>
+                <RaisePanel
+                  min={la!.minRaiseTo} max={la!.maxRaiseTo} step={10}
+                  value={raiseAmt} onChange={setRaiseAmt}
+                  pot={game.players.reduce((s, p) => s + p.handBet, 0)}
+                  bigBlind={game.bigBlind}
+                />
               )}
               <div className="flex items-center gap-2 justify-center">
                 {(la!.canFold || la!.canCall) && (

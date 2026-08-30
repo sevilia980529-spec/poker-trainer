@@ -11,7 +11,7 @@ import SettlementModal from '../components/SettlementModal';
 import { Chip, ChipStack } from '../components/ChipStack';
 import { playDeal, playChips, playClick, playFold, playWin, playLose } from '../lib/sound';
 import { Button } from '../components/ui/button';
-import { Slider } from '../components/ui/slider';
+import RaisePanel from '../components/RaisePanel';
 import { Badge } from '../components/ui/badge';
 import { ArrowLeft } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -58,6 +58,10 @@ export default function FriendRoom() {
       switch (msg.type) {
         case 'joined':
           setError('');
+          // 记住座位凭证：中途掉线后凭房间码+凭证原地回归（保住筹码与分数）
+          if (msg.roomId && msg.seatIdx !== undefined) {
+            localStorage.setItem(`poker-trainer-seat-${msg.roomId}`, String(msg.seatIdx));
+          }
           break;
         case 'lobby':
           setLobby({ roomId: msg.roomId, players: msg.players, hostSeat: msg.hostSeat, youSeat: msg.youSeat });
@@ -118,7 +122,11 @@ export default function FriendRoom() {
     if (!name.trim()) return setError('先给自己起个名字');
     if (!roomCode.trim()) return setError('输入 4 位房间码');
     localStorage.setItem('poker-trainer-nickname', name.trim());
-    send({ type: 'join', roomId: roomCode.trim().toUpperCase(), name: name.trim() });
+    const rid = roomCode.trim().toUpperCase();
+    send({
+      type: 'join', roomId: rid, name: name.trim(),
+      seatToken: localStorage.getItem(`poker-trainer-seat-${rid}`) ?? undefined,
+    });
   };
 
   const isHost = lobby?.hostSeat === lobby?.youSeat;
@@ -394,11 +402,11 @@ export default function FriendRoom() {
             {myTurn && la && !game.players[youId].folded ? (
               <div className="w-full max-w-lg flex flex-col items-center gap-2">
                 {la.canRaise && (
-                  <div className="flex items-center gap-3 w-full px-4">
-                    <Slider className="flex-1" min={la.minRaiseTo} max={la.maxRaiseTo} step={10}
-                      value={[raiseAmt]} onValueChange={v => setRaiseAmt(v[0])} />
-                    <span className="font-mono font-bold text-amber-300 w-16 text-right">{raiseAmt}</span>
-                  </div>
+                  <RaisePanel
+                    min={la.minRaiseTo} max={la.maxRaiseTo} step={10}
+                    value={raiseAmt} onChange={setRaiseAmt}
+                    pot={pot} bigBlind={game.bigBlind} accent="amber"
+                  />
                 )}
                 <div className="flex items-center gap-2 justify-center flex-wrap">
                   {(la.canFold || la.canCall) && (
