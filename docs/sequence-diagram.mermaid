@@ -1,0 +1,112 @@
+sequenceDiagram
+    autonumber
+    participant U as 用户
+    participant UI as Register.tsx
+    participant API as src/lib/api.ts
+    participant SRV as server/api.ts
+    participant AR as authRoutes
+    participant SS as session.ts
+    participant SB as Supabase PostgREST
+    participant SE as syncEngine
+    participant MD as MigrateDialog
+    participant PG as 游戏页面
+    participant SY as syncRoutes
+
+    Note over U,SY: ───────── ① 注册（AUTH-01/04） ─────────
+    U->>UI: 输入邮箱/密码/昵称
+    UI->>UI: 前端校验：邮箱正则 + 密码强度≥中 + 两次一致
+    UI->>API: POST /api/auth/register
+    API->>SRV: fetch（AbortController 8s）
+    SRV->>AR: readJsonBody(limit 16KB)
+    AR->>AR: email = trim().toLowerCase()；服务端二次校验
+    AR->>AR: bcrypt.hash(password, 10)
+    AR->>SB: POST /rest/v1/users（Prefer: return=representation）
+    alt 唯一索引冲突 23505
+        SB-->>AR: 409
+        AR-->>API: 409 EMAIL_TAKEN
+        API-->>UI: 邮箱框转红 + 「该邮箱已注册，[去登录]」
+    else 成功
+        SB-->>AR: 201 [UserRow]
+        AR->>SB: POST /rest/v1/user_progress {user_id}（默认 10000 豆）
+        AR->>SS: sign({uid, iat, exp})
+        SS-->>AR: HMAC 令牌
+        AR-->>SRV: Set-Cookie pm_session（HttpOnly/SameSite=Lax/Secure/Max-Age=2592000）
+        AR-->>API: 200 {user, snapshot, revision}
+        API-->>UI: 200
+        UI->>SE: captureLocal(本机快照) ← 必须在 applyRemote 之前
+        UI->>SE: applyRemote(snapshot, revision) + start(userId)
+        UI->>UI: navigate('/', {replace:true})
+
+        Note over U,MD: ───────── ② 游客迁移（SYNC-04） ─────────
+        alt 本机有非零进度 且 migrated_at === null
+            UI->>SE: setSuspended(true) 挂起自动上报
+            UI->>MD: 打开迁移弹窗（三策略，默认「合并到云端」）
+            U->>MD: 选择策略 → 确认迁移
+            MD->>API: POST /api/sync/migrate {strategy, snapshot, profile}
+            API->>SY: fetch（8s）
+            SY->>SB: GET users（取 migrated_at）
+            alt migrated_at 非空
+                SY-->>API: 200 alreadyMigrated:true（不做任何合并）
+            else 首次迁移
+                SY->>SB: GET user_progress（云端当前值）
+                SY->>SY: merge = mergeStrategy === 'merge' ? 云端 + (本机 − ZERO_BASELINE)<br/>: 'overwrite' ? 本机整行覆盖 : 云端原样
+                SY->>SB: PATCH user_progress?user_id=eq.X&revision=eq.N（CAS）
+                SY->>SB: PATCH users?migrated_at=is.null {migrated_at: now}
+                SY-->>API: 200 {snapshot, revision, user}
+            end
+            API->>SE: applyRemote(snapshot, revision)
+            API->>MD: 关闭 + toast「进度已上传云端」
+            MD->>SE: setSuspended(false) 恢复自动同步
+        end
+    end
+
+    Note over U,SY: ───────── ③ 增量上报（含 409 乐观锁重试） ─────────
+    U->>PG: 答题 / 打牌 / 签到
+    PG->>SE: saveProfile() 或 recordAnswer() → notifyWrite()
+    SE->>SE: markDirty() → clearTimeout + setTimeout(flush, 3000)
+    Note over SE: visibilitychange→hidden 或 pagehide 时立即 flush（sendBeacon 兜底）
+    SE->>SE: payload = computeDelta() = current − base
+    alt 无变化
+        SE->>SE: 直接 return，不发请求
+    end
+    SE->>API: POST /api/sync/push {baseRevision, delta, peak, perCategoryDelta, checkin, lww}
+    API->>SY: fetch（AbortController 8s）
+    SY->>SS: verifySession(cookie)
+    SY->>SB: GET /rest/v1/user_progress?user_id=eq.X
+    SB-->>SY: [ProgressRow]
+    alt cloud.revision ≠ baseRevision
+        SY-->>API: 409 REVISION_CONFLICT + {snapshot, revision}
+        API->>SE: 冲突
+        SE->>SE: merged = 云端快照 + 我的 delta → writeLocalSnapshot(merged)（suppress）
+        SE->>SE: base := 云端快照；baseRevision := 云端 revision（delta 原样保留不重算）
+        SE->>SE: sleep 300ms → 重试 1；仍冲突 → sleep 900ms → 重试 2
+    else revision 匹配
+        SY->>SY: mergeProgress()：ACCUM 累加 / PEAK 取 max / perCategory 逐 key<br/>CHECKIN 取 max + 重算 / LWW 按 clientUpdatedAt
+        SY->>SB: PATCH user_progress?user_id=eq.X&revision=eq.N<br/>Prefer: return=representation
+        alt 返回空数组（被并发抢先）
+            SB-->>SY: 200 []
+            SY-->>API: 409 REVISION_CONFLICT + 最新快照
+        else 返回 1 行
+            SB-->>SY: 200 [nextRow]
+            SY-->>API: 200 {snapshot, revision}
+            API->>SE: base := snapshot；baseRevision := revision（delta 归零）
+            SE->>SE: 持久化 base 到 pm_sync_base_v1；syncStatus='idle'
+        end
+    end
+
+    Note over U,SY: ───────── ④ 会话恢复（冷启动不阻塞首屏） ─────────
+    U->>UI: 打开页面（可能冷启动）
+    UI->>UI: 首帧读 pm_auth_cache_v1 的 user → 先按已登录渲染（无闪烁）
+    par 并行探测
+        UI->>API: GET /api/health（3s 超时）
+        API-->>UI: cloud=true/false → setHealth（失败静默重试 1 次后按 false）
+    and
+        UI->>API: GET /api/auth/me（2s 超时，不 await 阻塞渲染）
+        alt 200
+            API-->>UI: {user, snapshot, revision} → applyRemote + syncEngine.start()
+        else 401
+            API-->>UI: setGuest()
+        else 超时/失败
+            API-->>UI: 保留缓存快照，1s 后后台重试 1 次；仍失败 → 游客态
+        end
+    end

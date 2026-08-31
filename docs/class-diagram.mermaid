@@ -1,0 +1,195 @@
+classDiagram
+    class AuthStore {
+        +AuthStatus status
+        +SyncStatus syncStatus
+        +CloudUser user
+        +boolean cloudEnabled
+        +boolean healthChecked
+        +number lastSyncedAt
+        +number pendingCount
+        +MigratePrompt migratePrompt
+        +CapturedLocal capturedLocal
+        +setHealth(cloudEnabled) void
+        +setAuthenticated(user) void
+        +setGuest() void
+        +setSyncStatus(s) void
+        +markSynced(pending) void
+        +setPending(n) void
+        +openMigratePrompt(p) void
+        +closeMigratePrompt() void
+        +captureLocal(c) void
+        +reset() void
+    }
+
+    class ApiClient {
+        +health() Promise~HealthResponse~
+        +register(req) Promise~AuthSessionResponse~
+        +login(req) Promise~AuthSessionResponse~
+        +logout() Promise~void~
+        +me() Promise~AuthSessionResponse~
+        +updateProfile(req) Promise~CloudUser~
+        +syncPush(req) Promise~Result~
+        +syncPull() Promise~SyncPullResponse~
+        +migrate(req) Promise~MigrateResponse~
+        -request(path, init, timeoutMs) Promise~ApiResponse~
+        -withRetry(fn, backoffMs) Promise~T~
+    }
+
+    class SyncEngine {
+        -string userId
+        -ProgressSnapshot base
+        -number baseRevision
+        -number debouncer
+        -boolean suspended
+        -boolean suppressNotify
+        -boolean inFlight
+        +start(userId) void
+        +stop() void
+        +setSuspended(v) void
+        +markDirty() void
+        +flush(opts) Promise~void~
+        +manualSync() Promise~Result~
+        +applyRemote(snapshot, revision) void
+        +setBase(snapshot, revision) void
+        +computeDelta() SyncPushRequest
+        +hasPending() boolean
+        +pendingCount() number
+        -push() Promise~boolean~
+        -applyConflict(conflict) void
+        -flushNow() void
+        -loadBase() void
+        -persistBase() void
+    }
+
+    class LocalSnapshot {
+        +readLocalSnapshot() ProgressSnapshot
+        +writeLocalSnapshot(s) void
+        +ZERO_BASELINE ProgressSnapshot
+        +hasNonZeroProgress(s) boolean
+    }
+
+    class UserStore {
+        <<existing · 零改动>>
+        +number xp
+        +string nickname
+        +string avatar
+        +number lastDailyCheckin
+        +number consecutiveLoginDays
+        +Account[] accounts
+        +string activeId
+        +addXP(n) void
+        +dailyCheckin() Result
+        +setNickname(n) void
+        +updateAccount(id, patch) void
+        +subscribe(listener) Unsubscribe
+    }
+
+    class Points {
+        <<existing · +3 行>>
+        +loadProfile() PlayerProfile
+        +saveProfile(p) void
+        +saveProfileRaw(p) void
+        +claimRelief(p) PlayerProfile
+        +defaultProfile() PlayerProfile
+        +__onWrite(fn) void
+        -notifyWrite() void
+    }
+
+    class DrillStats {
+        <<existing · +3 行>>
+        +loadDrillStats() DrillStats
+        +recordAnswer(stats, cat, ok) DrillStats
+        +writeDrillStatsRaw(s) void
+        +__onWrite(fn) void
+        -notifyWrite() void
+    }
+
+    class ApiRouter {
+        +handleApi(req, res) Promise~boolean~
+        +readJsonBody(req, limit) Promise~any~
+        -ROUTES Record
+        -NEED_AUTH Set
+        -BODY_LIMIT Record
+        -dispatch(key, ctx) Promise~void~
+    }
+
+    class AuthRoutes {
+        +health(ctx) void
+        +register(ctx) void
+        +login(ctx) void
+        +logout(ctx) void
+        +me(ctx) void
+        +updateProfile(ctx) void
+        +resetRequest(ctx) void
+        +resetConfirm(ctx) void
+        +notImplemented(ctx) void
+        -toCloudUser(row) CloudUser
+    }
+
+    class SyncRoutes {
+        +push(ctx) void
+        +pull(ctx) void
+        +migrate(ctx) void
+        -computeMigrate(cloud, req, now) Result
+    }
+
+    class Session {
+        +sign(payload) string
+        +verifyToken(token) SessionPayload
+        +verifySession(req) SessionPayload
+        +readCookie(req) string
+        +writeCookie(res, token) void
+        +clearCookie(res) void
+    }
+
+    class SupabaseClient {
+        -REST string
+        +sbGet(table, query) Promise~Row[]~
+        +sbInsert(table, body, prefer) Promise~Row[]~
+        +sbPatch(table, filters, body) Promise~Row[]~
+        -call(path, init) Promise~any~
+    }
+
+    class MergeEngine {
+        +mergeProgress(cloud, payload, now) ProgressRow
+        +mergeCheckin(cloud, inc, now) Checkin
+        +mergePerCategory(cloud, delta) Record
+        -clampInt(v, lo, hi) number
+    }
+
+    class ConfigModule {
+        <<server/config.ts>>
+        +getConfig() ServerConfig
+        -CLOUD_ENABLED boolean
+    }
+
+    class HttpError {
+        +number status
+        +ApiErrorCode code
+        +string message
+        +unknown details
+    }
+
+    AuthStore ..> ApiClient : 驱动请求
+    SyncEngine ..> ApiClient : syncPush / syncPull
+    SyncEngine ..> LocalSnapshot : 读写快照
+    SyncEngine ..> AuthStore : 更新 syncStatus / pendingCount
+    SyncEngine ..> UserStore : subscribe() + setState()
+    LocalSnapshot ..> UserStore : 读 xp / 签到
+    LocalSnapshot ..> Points : 读 profile
+    LocalSnapshot ..> DrillStats : 读 stats
+    Points ..> SyncEngine : notifyWrite -> markDirty
+    DrillStats ..> SyncEngine : notifyWrite -> markDirty
+    UserStore ..> SyncEngine : subscribe -> markDirty
+    ApiRouter --> AuthRoutes : 分发
+    ApiRouter --> SyncRoutes : 分发
+    ApiRouter --> Session : 鉴权
+    ApiRouter --> HttpError : 统一错误
+    AuthRoutes --> SupabaseClient : 读写
+    AuthRoutes --> Session : 签发 cookie
+    SyncRoutes --> SupabaseClient : 读写
+    SyncRoutes --> MergeEngine : 合并矩阵
+    SupabaseClient --> ConfigModule : 读密钥
+    Session --> ConfigModule : 读 SESSION_SECRET
+    AuthRoutes --> ConfigModule : 读 CLOUD_ENABLED
+    SyncRoutes --> ConfigModule : 读 CLOUD_ENABLED
