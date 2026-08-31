@@ -34,7 +34,8 @@ export default function SettlementModal({
   open, onClose, heroWon, delta, xpGain, info, players, onNext, nextLabel = '再来一局 ▶', onReview, onHome,
 }: SettlementModalProps) {
   return (
-    <Modal open={open} onClose={onClose} title={heroWon ? '🎉 胜利！' : '本局结束'} showClose={false}>
+    // 结算弹窗必须让用户点按钮才能走，禁用遮罩点击与 ESC 关闭
+    <Modal open={open} onClose={onClose} title={heroWon ? '🎉 胜利！' : '本局结束'} showClose={false} dismissible={false}>
       <div key={open ? 'settle-open' : 'settle-closed'} className="space-y-4 anim-shake">
         {/* 盈亏 */}
         <div className="text-center">
