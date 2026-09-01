@@ -1,12 +1,15 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import PageHeader from '../components/common/PageHeader';
 import LevelBadge from '../components/common/LevelBadge';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import Avatar from '../components/Avatar';
 import AccountForm from '../components/AccountForm';
+import CloudSyncCard from '../components/CloudSyncCard';
 import { ToastContainer, useToast } from '../components/common/Toast';
 import { useUserStore, useLevel } from '../store/userStore';
+import { useAuthStore } from '../store/authStore';
 import { loadProfile, saveProfile, defaultProfile, claimRelief, DAILY_BONUS, BUY_IN } from '../store/points';
 import { loadDrillStats } from '../store/drillStats';
 import Icon from '../components/Icon';
@@ -25,6 +28,8 @@ export default function Profile() {
   const logout = useUserStore((s) => s.logout);
   const { level, nextLevel, progress, xpToNext } = useLevel();
   const toast = useToast();
+  const navigate = useNavigate();
+  const cloudStatus = useAuthStore((s) => s.status);
 
   const [profile, setProfile] = useState(loadProfile);
   const [editingName, setEditingName] = useState(false);
@@ -162,6 +167,21 @@ export default function Profile() {
             ))}
           </div>
         </section>
+
+        {/* 云端账号 / 同步 */}
+        {cloudStatus === 'authenticated' ? (
+          <CloudSyncCard />
+        ) : (
+          <section className="glass rounded-2xl p-5 animate-fade-up" style={{ animationDelay: '0.11s' }}>
+            <h3 className="text-sm font-semibold text-ivory/80 mb-2">云端同步</h3>
+            <p className="text-xs text-ivory/60 mb-3">
+              登录云端账号，进度自动同步到云端，换手机、清缓存也不丢。
+            </p>
+            <Button fullWidth variant="primary" onClick={() => navigate('/login')}>
+              登录 / 注册云端账号
+            </Button>
+          </section>
+        )}
 
         {/* 账号管理 */}
         <section className="glass rounded-2xl p-5 animate-fade-up" style={{ animationDelay: '0.12s' }}>

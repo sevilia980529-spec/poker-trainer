@@ -10,7 +10,14 @@
     "start": "npm run build && npm run build:server && node dist-server/server.mjs",
     "start:prod": "node dist-server/server.mjs",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc -b --pretty",
+    "dev:server": "npm run build:server && node --env-file=.env dist-server/server.mjs",
+    "test:merge": "esbuild server/merge.test.ts --bundle --platform=node --format=esm --outfile=dist-test/merge.test.mjs && node --test dist-test/merge.test.mjs",
+    "check:secrets": "npm run build && (grep -rIl -e 'service_role' -e 'SERVICE_ROLE' -e 'SESSION_SECRET' dist/assets/ && echo '❌ 密钥泄漏到前端产物' && exit 1) || echo '✅ 前端产物无密钥'"
+  },
+  "engines": {
+    "node": ">=20.6"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -40,6 +47,7 @@
     "@radix-ui/react-toggle": "^1.1.10",
     "@radix-ui/react-toggle-group": "^1.1.11",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

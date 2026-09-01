@@ -10,8 +10,16 @@
 | 数据存储 | Supabase 免费版 Postgres（本次新增） |
 | 部署 | Render 免费层（`render.yaml`），推送 GitHub 自动部署 |
 | 视觉基线 | 暗色玻璃拟态 + 金色点缀（沿用 `.glass` / `gold` / `ink` / `ivory` 令牌，不另起视觉） |
-| 文档版本 | v1.0 |
+| 文档版本 | **v1.1**（v1.0 经架构评审后修订） |
 | 作者 | 许清楚（产品经理） |
+
+### 版本记录
+
+| 版本 | 变更 |
+| --- | --- |
+| v1.0 | 初稿 |
+| **v1.1** | 根据架构师高见远的架构评审（`docs/ARCH-账号系统.md` §12）修订 10 处：<br>① §4.2/§5.1/§5.2 新增 `client_updated_at` 列（`users` + `user_progress` 各一列），修正"以 `updated_at` 做 LWW"的不可执行表述<br>② §4.1 新增「昵称/头像归属规则」（默认值判定），替换原不可执行的 `updated_at` 比较<br>③ §4.1 新增「迁移期间必须挂起自动上报」，含快照重置要求（防二次累加）<br>④ §3.1 新增 SYNC-01/SYNC-08 的「立即同步 = 先 push 后 pull」语义与失败处理<br>⑤ §6.5 迁移弹窗新增昵称/头像归属展示行 + 真冲突时的内联二选一开关<br>⑥ §3.2 新增 SYNC-12「签到服务端裁决」（P1）<br>⑦ §7 Q5 按架构师实测澄清，风险降级；新增 Q8（时区）、Q9（签到奖励重复）<br>⑧ §0.2 补充：`drill_streak` 在 `TrainingHub.tsx:42` / `Drills.tsx:78` 有实际展示<br>⑨ 附录 A 明确 `FriendRoom.tsx` P0 不改（昵称经 `userStore` 自动获得云端值）<br>⑩ 明确 `public.users` 带 schema 前缀，与 Supabase 内置 `auth.users` 不冲突 |
+| **v1.1.1** | ① **§4.5 新增「时区与天的定义」**：Q8 拍板前后端统一 UTC+8，含前端 `isSameDay`/`isConsecutiveDay` 的具体改法与产品理由<br>② **§7 Q9 数字二次核对**：确认签到奖励为 **+50 XP 与 +500 欢乐豆两笔**（`Home.tsx:10/32/45/116`），并加注"常见误判"——`claimRelief()`（+2000）是独立的破产续杯通路，非签到奖励；判据由"无货币价值"改为"可利用性低"<br>③ **§3.2 SYNC-12 范围扩大**：必须同时覆盖 XP 与欢乐豆，并指定"带标签的奖励通道 + 按 `(type, day)` 幂等"的离线去重方案<br>④ **§5.4 新增「P1 增量列」**：明确 `last_checkin_reward_day` 等 P1/P2 对象**不得**出现在 P0 的 `supabase/schema.sql` 中，附范围纪律声明<br>⑤ **清理 v1.1 残留的过期表述**：§5.1 `users.updated_at` 与 §5.2 `drill_streak` 中仍写作"LWW 依据 `updated_at`"的地方，统一订正为 `client_updated_at` / "不可作为 LWW 依据"；§5 小节重新编号（5.4→5.5、5.5→5.6），附录 A 交叉引用同步更新 |
 
 ---
 
@@ -32,7 +40,8 @@
 | 账号门 | `src/components/AccountGate.tsx` | 全屏卡片，列出本地账号 or 创建账号 | 改造为三入口：游客进入 / 登录 / 注册 |
 | 个人中心 | `src/pages/Profile.tsx` | 段位卡 + 战绩卡 + 训练卡 + 账号管理（切换/添加/退出/删除）+ 重置战绩 | 追加"云同步状态卡"，账号区按登录态分叉 |
 | 服务端 | `server/standalone-entry.ts` | 原生 `http.createServer`，手写静态文件 + `WebSocketServer({server, path:'/ws'})`，**无 body 解析、无路由框架、无 cookie 解析** | 新增 `/api/*` 需在 `createServer` 回调里手写路由分发 + 手动读 body |
-| 前端 WS | `src/pages/FriendRoom.tsx` | `new WebSocket(\`${proto}://${location.host}/ws\`)` | 好友房不改；昵称来源改为"云端昵称优先，游客回落本地昵称" |
+| 前端 WS | `src/pages/FriendRoom.tsx` | `new WebSocket(\`${proto}://${location.host}/ws\`)` | **v1.1 更正：P0 完全不动此文件**。昵称无需改造 —— SYNC-01 拉取后会写入 `userStore`，`FriendRoom` 读 `userStore` 即自动获得云端昵称。此项从改造清单中移除，降低 G3 回归风险 |
+| 训练统计展示位 | `TrainingHub.tsx:42`、`Drills.tsx:78` | 展示 `drillStats.streak`（当前连对） | **v1.1 补充**：`drill_streak` 并非纯会话态，在这两处有实际展示，因此确认纳入同步范围，LWW 方案成立 |
 
 ### 0.3 不在本次范围内
 
@@ -104,7 +113,7 @@
 
 | ID | 需求 | 验收标准 |
 | --- | --- | --- |
-| **SYNC-01** | **云端拉取**：登录成功 / `auth/me` 成功 / 手动点「立即同步」时全量拉取云端快照并写入本地 | 拉取后 `userStore` 的 `xp/lastDailyCheckin/consecutiveLoginDays/nickname/avatar`、`drillStats`、`points` 与云端一致 |
+| **SYNC-01** | **云端拉取**：登录成功 / `auth/me` 成功 / 手动点「立即同步」时全量拉取云端快照并写入本地 | 拉取后 `userStore` 的 `xp/lastDailyCheckin/consecutiveLoginDays/nickname/avatar`、`drillStats`、`points` 与云端一致；**执行顺序必须是先 push 再 pull，且 push 失败时禁止 pull**（详见下方「立即同步语义」） |
 | **SYNC-02** | **增量上报**：客户端维护 `lastSyncedSnapshot`（上次成功同步后的云端快照），上报时只提交 `snapshot → current` 的**差值**，而非整包覆盖 | ① 答题、打牌、签到、领补给等写入点触发防抖上报（防抖 **3s**，页面隐藏/卸载时立即 flush）；② 服务端执行 `cloud = cloud + delta`；③ 上报成功后更新 `lastSyncedSnapshot` |
 | **SYNC-03** | **乐观锁防覆盖**：上报携带 `baseRevision`，服务端比对不匹配返回 **409** + 最新快照，客户端重算差值后自动重试（最多 2 次，指数退避 300ms/900ms） | A、B 两设备并发上报同一账号，双方增量均不丢失（对应用例 US-06 ②） |
 | **SYNC-04** | **游客→注册一键迁移**（详见 §4.1）：注册/登录后若本机存在非零进度，弹出迁移引导弹窗，提供 3 种策略 | 三种策略结果均符合 §4.1 表格；迁移过程有 loading 态与失败重试；迁移只成功执行一次（`users` 表加 `migrated_at` 幂等标记） |
@@ -142,7 +151,22 @@
 | **AUTH-12** | **登录失败限流**：同 IP + 同邮箱，15 分钟内连续失败 ≥ 5 次则锁定 15 分钟 | 使用进程内 `Map`（Render 免费层无持久盘，属 best-effort）；超限返回 429 + 明确提示剩余等待时间 |
 | **AUTH-13** | **注销云端账号**：删除 `users` + 级联删除 `user_progress`，清除会话 | 需输入密码二次确认；本机数据可选保留 |
 | **SYNC-07** | **离线队列持久化**：断网期间的增量写入 localStorage 队列，恢复网络后自动补传 | 断网完成 10 题后恢复网络，30s 内云端 `drill_answered` 补齐 +10；队列持久化，刷新页面不丢 |
-| **SYNC-08** | **同步状态可视化**：Profile 云同步卡展示「已同步 / 同步中… / 离线（N 条待同步）/ 云端不可用」四态 + 最后同步时间 + 「立即同步」按钮 | 断网时显示待同步条数；点击「立即同步」有 loading 与结果 toast |
+| **SYNC-08** | **同步状态可视化**：Profile 云同步卡展示「已同步 / 同步中… / 离线（N 条待同步）/ 云端不可用」四态 + 最后同步时间 + 「立即同步」按钮 | 断网时显示待同步条数；点击「立即同步」有 loading 与结果 toast；「立即同步」执行 push→pull（详见下方「立即同步语义」） |
+| **SYNC-12**（v1.1 新增，P1） | **签到服务端裁决 + 奖励去重**：已登录且在线时，签到改为服务端裁决（`POST /api/sync/checkin`），由服务端按 UTC+8 判定是否可签并发放奖励 | ① 在线签到以服务端返回为准；② **必须同时覆盖 XP（+50）与欢乐豆（+500）两笔奖励**，不得只处理 XP；③ 离线签到采用**带标签的奖励通道**去重：push 时携带 `rewards:[{type:'daily_checkin', day:'YYYY-MM-DD', xp:50, points:500}]`，服务端按 `(type, day)` 幂等丢弃已发放记录（`user_progress.last_checkin_reward_day date`），离线补传时同样安全；④ 上线后观察数据再决定是否彻底收口 |
+
+#### 立即同步语义（v1.1 新增，SYNC-01 / SYNC-08 权威定义）
+
+**问题**：SYNC-01 原文只写"全量拉取并写入本地"。若本机尚有未同步增量，直接 pull 覆盖会**抹掉本地增量**。
+
+**规则**：「立即同步」= **先 push（把本地增量推上去）→ 再 pull（拉云端覆盖本地）**。
+
+| 情形 | 行为 |
+| --- | --- |
+| push 成功 + pull 成功 | 本地与云端一致，状态转「已同步」，更新 `lastSyncedSnapshot` 与最后同步时间 |
+| **push 失败** | **禁止 pull**，本地数据保持不动，状态转「离线（N 条待同步）」并 toast「网络不可用，已保留本地进度」 |
+| push 成功 + pull 失败 | 云端已收到本机增量（不丢数据），状态转「已上传，待刷新」，本地数据保持不动，下次自动重试 pull |
+
+**不做** P0「强制用云端覆盖本机」能力：因为「退出登录 → 重新登录」已天然覆盖该场景（登出清空 `lastSyncedSnapshot`，重登后 pull 即全量覆盖本地）。此路径需写入 FAQ/帮助文案。
 | **SYNC-09** | **欢乐豆流水明细**：新增云端 `point_ledger` 表（余额仍为权威值，流水仅作审计与回溯） | 每次积分变动记录 `{delta, balance_after, reason, created_at}`；Profile 可查看最近 50 条 |
 | **UI-07** | **表单体验增强**：邮箱/密码框支持一键清除、粘贴优化、错误抖动动效（复用现有 `.anim-shake`） | 与设计走查通过 |
 | **NFR-07** | **简易风控日志**：记录注册/登录/失败事件（**仅记录邮箱哈希与 IP 前缀**，不记录明文邮箱与密码） | 可在服务端日志中检索到事件流水 |
@@ -169,16 +193,43 @@
 
 | 策略 | 语义 | 各字段处理 |
 | --- | --- | --- |
-| **① 合并到云端（默认推荐）** | 双端进度取并集，谁也不丢 | 累计型字段走**增量累加**；峰值型字段取 `max`；覆盖型字段（昵称/头像）以 `updated_at` 较新者胜；签到取 `max` 且服务端按日期重算连续天数 |
-| **② 以本机覆盖云端** | 本机为准，云端被替换 | 需二次确认，明确列出将被丢弃的云端数值；本质是"用本机快照整体覆盖"+ `revision+1` |
-| **③ 不上传，使用云端进度** | 云端为准，本机停用 | 云端快照下发覆盖本地；**本机旧数据不删除**，写入 `localStorage['pm_local_backup_<timestamp>']` 保留 30 天；此后本机进入正常同步模式 |
+| **① 合并到云端（默认推荐）** | 双端进度取并集，谁也不丢 | 累计型字段走**增量累加**；峰值型字段取 `max`；签到取 `max` 且服务端按日期重算连续天数；昵称/头像走**默认值判定**（见下方「昵称/头像归属规则」） |
+| **② 以本机覆盖云端** | 本机为准，云端被替换 | 需二次确认，明确列出将被丢弃的云端数值；本质是"用本机快照整体覆盖"+ `revision+1`；**昵称/头像无条件采用本机值** |
+| **③ 不上传，使用云端进度** | 云端为准，本机停用 | 云端快照下发覆盖本地；**本机旧数据不删除**，写入 `localStorage['pm_local_backup_<timestamp>']` 保留 30 天；此后本机进入正常同步模式；**昵称/头像保持云端值** |
+
+#### 昵称/头像归属规则（v1.1 新增，修正原"以 updated_at 较新者胜"的不可执行表述）
+
+**问题**：本机 `Account` 对象没有 `updated_at` 字段（只有 `createdAt`），迁移时无法用时间戳比较。
+
+**规则**：
+
+| 策略 | 判定逻辑 |
+| --- | --- |
+| `merge` | 仅当云端仍是默认值时采纳本机值，否则保留云端。默认值定义：`nickname === '新玩家'` 或 `avatar === '/avatars/1.png'`（逐字段独立判定，昵称与头像互不影响） |
+| `overwrite` | 无条件采用本机值 |
+| `keep_cloud` | 无条件保持云端值 |
+
+**产品说明**：`merge` 下"云端自定义昵称优先"是刻意为之 —— 用户主动登录一个已有账号时，账号身份（昵称/头像）应视为权威；本机游客数据只是待并入的进度。
+
+**强制 UI 可见性要求（SYNC-04 补充）**：昵称/头像的归属结果**必须在迁移弹窗中显式展示**（§6.5 摘要卡新增一行），不得静默生效。当**双方均为非默认值且不相等**（真冲突）时，弹窗须提供内联二选一开关：「保留云端「德州之王」」/「改用本机「牌神」」，默认选中「保留云端」。
+
+#### 迁移期间必须挂起自动上报（v1.1 新增，SYNC-04 补充）
+
+**问题**：注册成功后基准被设为云端默认值（欢乐豆 10000），本机 12000 → 差值 +2000。若 3s 防抖上报先跑，用户再点「合并到云端」会**二次累加成 14000**；更严重的是，若用户本意选「不上传，使用云端进度」，自动上报已把本机数据泄漏进云端，该选项失效。
+
+**规则**：
+1. 在**拿到 register/login 响应并判定需要迁移的同一时刻**即调用 `syncEngine.setSuspended(true)`，不得等到弹窗渲染完成（避免首屏 `Home` 自动签到先触发一次上报）；
+2. 挂起期间**只暂停上传**，本地写入与 `pendingDelta` 累积照常，用户可正常游玩，关闭弹窗后一次性补传，不丢数据；
+3. **必须**在以下每一个出口释放挂起：迁移成功 / 迁移失败 / 「稍后再说」/ ✕ 关闭 / 遮罩点击关闭 / 页面卸载。实现上用 `try/finally` 或 effect cleanup 保证，禁止只在成功分支释放；
+4. 迁移成功后**必须先把 `lastSyncedSnapshot` 重置为服务端返回的合并后快照，再释放挂起**。否则释放瞬间残留的 +2000 差值会被再次上报，问题复现（这是本条需求的验收重点）；
+5. 迁移失败回滚时，快照保持挂起前的值。
 
 迁移执行步骤（策略①）：
 1. 客户端计算本地相对"零值基线"的全量快照 `S_local`；
-2. `POST /api/sync/migrate`，body `{strategy:'merge'|'overwrite'|'keep_cloud', snapshot:S_local}`；
-3. 服务端在**单个事务**内按字段合并矩阵（§4.2）写入 `user_progress`，置 `migrated_at = now()`，`revision +1`；
-4. 返回合并后快照，客户端写入本地 store 并初始化 `lastSyncedSnapshot`；
-5. 弹窗关闭，toast「进度已上传云端」。
+2. `POST /api/sync/migrate`，body `{strategy:'merge'|'overwrite'|'keep_cloud', snapshot:S_local, nickname?, avatar?}`（`nickname/avatar` 仅在 `overwrite` 或用户在冲突开关中显式选择本机值时携带）；
+3. 服务端在**单个事务**内按字段合并矩阵（§4.2）与昵称/头像归属规则写入 `users` + `user_progress`，置 `migrated_at = now()`，`revision +1`；
+4. 返回合并后快照，客户端写入本地 store 并**重置 `lastSyncedSnapshot`**；
+5. 释放挂起，弹窗关闭，toast「进度已上传云端」。
 
 失败处理：任意一步失败则整体回滚，弹窗回到可选状态并展示「迁移失败，可稍后在个人中心重试」；Profile 页保留「重新迁移」入口。
 
@@ -188,7 +239,14 @@
 | --- | --- | --- | --- |
 | **增量累计型** | `xp`、`points`、`hands_played`、`hands_won`、`total_profit`、`excellent_actions`、`mistakes`、`drill_answered`、`drill_correct`、`drill_per_category[*].answered/correct` | `cloud = cloud + delta`，`delta = local - lastSyncedSnapshot` | 云端为权威账本，本地只提交增量；支持离线与多设备并发 |
 | **峰值型** | `biggest_pot`、`drill_best_streak` | `cloud = max(cloud, local)` | 单调不减，不允许回退 |
-| **LWW 状态型** | `nickname`、`avatar`、`drill_streak`（当前连对） | `updated_at` 较新者胜 | `drill_streak` 错答会清零，不能用 max |
+| **LWW 状态型** | `nickname`、`avatar`、`drill_streak`（当前连对） | 以 **`client_updated_at`** 较新者胜（见下方说明） | `drill_streak` 错答会清零，不能用 max；`drill_streak` 在 `TrainingHub.tsx:42` 与 `Drills.tsx:78` 有实际展示，非纯会话态，故必须同步 |
+
+**为什么需要 `client_updated_at`（v1.1 修正）**：原 PRD 写"以 `updated_at` 较新者胜"不可执行 —— `user_progress.updated_at` 是**服务端**时间，每次 push 都会刷新，无法表达"客户端最后一次改动该字段的时刻"。若改用到达顺序 LWW，则一台离线 3 天的设备重连后会用它过期的 `drill_streak` 覆盖掉另一台设备的最新值。因此引入 `client_updated_at`：
+
+- 语义：**客户端最后一次修改该 LWW 字段的时刻**（不是请求发出的时刻）；
+- 写入时机：仅当客户端确实提交了 LWW 字段变更时才更新该列；未变更的 push 不动它；
+- 时钟偏差防护：服务端收到 `clientTs > serverNow + 300s` 时判为异常，收敛为 `serverNow`（与签到时间戳同一套收敛逻辑，§Q9）；
+- `users` 表与 `user_progress` 表**各加一列同名 `client_updated_at`**，走同一套服务端判定代码，避免为昵称/头像单独特例化。
 | **签到型** | `last_daily_checkin`、`consecutive_login_days` | `last_daily_checkin = max(...)`；`consecutive_login_days` 由服务端依据 `last_daily_checkin` 日期**重算**后取 `max` | 关键：杜绝跨设备/改系统时间重复领取签到奖励 |
 | **幂等标记** | `migrated_at` | 仅首次写入 | 防止重复迁移导致数据翻倍 |
 
@@ -223,6 +281,21 @@ App 挂载
 | 登出 | 服务端下发 `Max-Age=0` cookie；客户端清空 `authStore` 与 `lastSyncedSnapshot`；**localStorage 游戏数据保留** |
 | 改密（P1） | `users.token_version +1`，验签时校验版本号，实现全局下线 |
 
+### 4.5 时区与"天"的定义（v1.1 新增，Q8 裁决落地）
+
+**裁决：全链路统一 UTC+8（北京时间），前端与服务端口径一致。**
+
+| 项 | 规则 |
+| --- | --- |
+| 服务端 | 所有"天"的判定（签到可签性、`consecutive_login_days` 重算，以及 P1 的 `last_checkin_reward_day`）一律按 **UTC+8** 计算 |
+| 前端 | `src/store/userStore.ts` 内的 **`isSameDay` / `isConsecutiveDay` 改为按 UTC+8 偏移判天**，不再依赖浏览器本地时区 |
+| 改法 | 现值用 `getFullYear()/getMonth()/getDate()`（浏览器本地时区）。改为在时间戳上 `+8*3600*1000` 后使用 `getUTC*()` 系列，或等价实现 |
+| 兼容性 | 这两个函数是 `userStore.ts` 的**模块内私有函数（未导出）**，改动不触碰任何导出签名，满足 NFR-04 |
+
+**为什么必须统一（产品理由）**：若前端用本地时区、服务端用 UTC+8，海外用户（如洛杉矶 UTC-7，当地周一 22:00 = 北京时间周二 13:00）会命中 —— 前端判"周一未签"放行并弹出「签到成功 +500 欢乐豆 +50 XP」，但服务端判"周二已签"、`last_daily_checkin` 取 max 不变，**奖励实际未发放**。这是"看起来成功但实际没生效"的静默承诺违背：用户难以描述、客服难以排查，直接伤害 G2「进度可靠」的核心承诺。统一后该问题从根上消除。
+
+**已知取舍**：海外用户的"每日"边界落在当地下午（而非午夜）。产品侧接受 —— 主用户群在中国零影响，且一致性优先于边界时刻的直觉性。
+
 ---
 
 ## 5. 数据字段清单（本地 → 云端映射）
@@ -237,11 +310,12 @@ App 挂载
 | `nickname` | `text` | NOT NULL, default `'新玩家'`, ≤12 字符 | `userStore.nickname` | ↕ LWW | |
 | `avatar` | `text` | default `'/avatars/1.png'` | `userStore.avatar` | ↕ LWW | 预设路径或 dataURL（限 128KB） |
 | `created_at` | `timestamptz` | default `now()` | `Account.createdAt` | → | |
-| `updated_at` | `timestamptz` | default `now()` | — | → | LWW 依据 |
+| `updated_at` | `timestamptz` | default `now()` | — | → | 服务端写入时间，**不可作为 LWW 依据**（每次 push 都刷新） |
 | `last_login_at` | `timestamptz` | nullable | — | → | 登录成功时写 |
 | `migrated_at` | `timestamptz` | nullable | — | → | 迁移幂等标记（SYNC-04） |
 | `token_version` | `int4` | default 0 | — | → | P1 改密全局下线 |
 | `email_verified` | `bool` | default false | — | → | P2 预留 |
+| `client_updated_at` | `timestamptz` | nullable | 客户端编辑资料时刻 | ↕ LWW 依据 | **v1.1 新增**。昵称/头像 LWW 的比较依据；仅当客户端提交昵称/头像变更时才写入 |
 
 ### 5.2 表 `user_progress`（游戏进度，1:1 关联 users）
 
@@ -260,11 +334,12 @@ App 挂载
 | `biggest_pot` | `int8` | default 0 | `profile.biggestPot` | `max` |
 | `drill_answered` | `int4` | default 0 | `drillStats.answered` | 增量累加 |
 | `drill_correct` | `int4` | default 0 | `drillStats.correct` | 增量累加 |
-| `drill_streak` | `int4` | default 0 | `drillStats.streak` | LWW(`updated_at`) |
+| `drill_streak` | `int4` | default 0 | `drillStats.streak` | LWW(`client_updated_at`) |
 | `drill_best_streak` | `int4` | default 0 | `drillStats.bestStreak` | `max` |
 | `drill_per_category` | `jsonb` | default `'{}'::jsonb` | `drillStats.perCategory` | 逐 key 增量累加<br>`{[cat]: {answered, correct}}` |
 | `revision` | `int8` | default 0 | — | 每次写入 +1，乐观锁（SYNC-03） |
-| `updated_at` | `timestamptz` | default `now()` | — | LWW / 冲突判定依据 |
+| `updated_at` | `timestamptz` | default `now()` | — | 服务端写入时间，**不可作为 LWW 依据**（每次 push 都刷新） |
+| `client_updated_at` | `timestamptz` | nullable | 客户端改动 `drill_streak` 的时刻 | **v1.1 新增**。`drill_streak` LWW 的比较依据；仅当客户端提交 `drill_streak` 变更时才写入 |
 
 ### 5.3 P1/P2 预留表
 
@@ -278,7 +353,15 @@ password_resets (id bigserial PK, user_id uuid FK, token_hash text,
                  expires_at timestamptz, used_at timestamptz)
 ```
 
-### 5.4 明确**不同步**的数据
+### 5.4 P1 增量列（**P0 建表脚本 `supabase/schema.sql` 不得预先添加**）
+
+| 列名 | 所属表 | 类型 | 关联需求 | 说明 |
+| --- | --- | --- | --- | --- |
+| `last_checkin_reward_day` | `user_progress` | `date` | P1 SYNC-12 | 签到奖励去重的幂等键（按 UTC+8 日期）。**P0 不建此列**，保持 P0 建表脚本干净；P1 开工时随迁移脚本一起添加 |
+
+> ⚠️ **范围纪律**：上表（连同 §5.3 的 `point_ledger` / `password_resets`）**均不在 P0 的 `supabase/schema.sql` 中**。P0 建表只包含 §5.1 `users` + §5.2 `user_progress` 两张表及其所列字段（含 v1.1 新增的两个 `client_updated_at` 列）。
+
+### 5.5 明确**不同步**的数据
 
 | 数据 | 存储位置 | 理由 |
 | --- | --- | --- |
@@ -287,7 +370,7 @@ password_resets (id bigserial PK, user_id uuid FK, token_hash text,
 | 好友房房间/座位状态 | 服务端内存 | 原本就在服务端，不属账号数据 |
 | `lastSyncedSnapshot`、离线队列 | 本机 localStorage | 同步机制自身状态 |
 
-### 5.5 ⚠️ 给架构师的实现提示（重要）
+### 5.6 ⚠️ 给架构师的实现提示（重要）
 
 `src/store/drillStats.ts` 与 `src/store/points.ts` **都不是 zustand store**，而是直接读写 localStorage 的裸函数，被 `Home / PokerTrainer / Blackjack / Drills / FriendRoom / Guandan / TrainingHub / Profile / Header` 9 个文件直接调用。若不加改造，**没有任何统一挂载点可以触发云端同步**。
 
@@ -539,10 +622,17 @@ password_resets (id bigserial PK, user_id uuid FK, token_hash text,
         │  │ 欢乐豆    12,480            │  │  数值 gold bold，等宽 .num
         │  │ 答题      320 题 · 正确率 78%│  │
         │  │ 连续签到  5 天               │  │
-        │  └─────────────────────────────┘  │
-        │                                   │
+        │  │ 昵称      牌神 → 德州之王    │  │  ★v1.1 新增：显式展示归属结果
+        │  └─────────────────────────────┘  │     「本机值 → 迁移后生效值」
+        │                                   │     无冲突时省略箭头后半段
         │  要把这些进度上传到云端账号        │  13px ivory/70
         │  「p****r@mail.com」吗？           │  邮箱脱敏，13px ivory
+        │                                   │
+        │  ※ 仅 merge 策略且昵称/头像真冲突时 │  ★v1.1 新增：内联冲突开关
+        │  ┌─────────────────────────────┐  │  默认选中「保留云端」
+        │  │ ⊙ 保留云端「德州之王」       │  │
+        │  │ ○ 改用本机「牌神」           │  │
+        │  └─────────────────────────────┘  │
         │                                   │
         │  ┌─────────────────────────────┐  │
         │  │ ● 合并到云端（推荐）         │  │  RadioGroup，选项行高 56px
@@ -570,6 +660,9 @@ password_resets (id bigserial PK, user_id uuid FK, token_hash text,
 - 「确认迁移」执行中禁止关闭弹窗（遮罩点击/返回键无效）；失败时弹窗回到可选状态 + 顶部红字「迁移失败：{原因}，可稍后重试」。
 - 「稍后再说」关闭弹窗并 `sessionStorage` 标记，本次会话不再打扰；Profile 页保留「把本机进度导入云端」入口。
 - 若云端账号已有数据（非新注册），弹窗顶部追加一行灰色提示：「云端账号现有：XP 3,200 · 欢乐豆 8,000」，便于用户对比决策。
+- **昵称/头像归属必须可见（v1.1）**：摘要卡固定展示一行「昵称 / 头像」的归属结果，格式「本机值 → 迁移后生效值」。按 §4.1 归属规则，`merge` 下云端为默认值时显示「牌神」（无箭头段），云端已有自定义值时显示「牌神 → 德州之王」。**禁止静默丢弃用户的本机昵称**。
+- 仅当双方昵称/头像均非默认值且不相等时才渲染冲突开关；`overwrite` / `keep_cloud` 策略下不渲染（结果唯一确定）。
+- **弹窗打开期间挂起自动上报**（§4.1 挂起规则）：✕ 关闭与遮罩点击关闭等同于「稍后再说」（写入同一 `sessionStorage` 标记 + 释放挂起），不做第四种语义。
 
 ---
 
@@ -622,9 +715,12 @@ password_resets (id bigserial PK, user_id uuid FK, token_hash text,
 | **Q2** | **找回密码的邮件通道**：Supabase 内置 SMTP（免费版约 3–4 封/小时）还是外接 Resend（免费 3000 封/月，需新增 `RESEND_API_KEY`）？P1 阶段是否接受"点击忘记密码 → 提示人工重置"作为兜底？ | 影响 AUTH-14 的实现成本与上线时间 |
 | **Q3** | **自定义头像是否允许**？当前 `AccountForm` 支持上传图片并压缩为 256px dataURL 直接存库（约 30–120KB/条）。Supabase 免费版 500MB 约可存 4000 个自定义头像 | 建议 P0 允许但限制 ≤128KB，P2 迁至 Supabase Storage |
 | **Q4** | **多设备同时在线**是否允许？本 PRD 按"允许 + 增量合并"设计（SYNC-03 乐观锁）。若业务要求"后登录踢掉前者"，需额外增加 `user_sessions` 表与强制下线逻辑 | 建议保持"允许" |
-| **Q5** | **Render 免费层冷启动约 30–60s**，首次 `/api/auth/me` 与 `/api/health` 大概率超时。是否接受"首屏 2s 后按游客渲染、登录态在后台静默重试"？ | 这是 NFR-01 的设计前提，需确认体验可接受 |
+| ~~Q8~~ ✅ **已拍板（v1.1）** | ~~签到"天"是否前端也统一 UTC+8~~ | **结论：是，前后端统一 UTC+8（北京时间）**，无降级妥协。理由：① 目标用户全在中国，UTC+8 即北京时间，主用户群零副作用；② 海外用户按北京时间计日反而更符合其心理预期（他想的仍是"国内几点"）；③ 从根上消除"点了签到、toast 说成功但 XP 没加"的静默承诺违背。落地见 §4.5，`isSameDay`/`isConsecutiveDay` 为 `userStore.ts` 未导出的模块内私有函数，改内部实现不触碰导出签名，符合 NFR-04 |
+| ~~Q5~~ ✅ **已澄清（v1.1）** | ~~Render 免费层冷启动 30–60s 会让 `/api/auth/me` 与 `/api/health` 超时吗？~~ | **架构师实测澄清**：30–60s 主要消耗在首个 HTML/JS 请求上，等 React 挂载完再发 API 时服务已热，因此 US-05「2s 内可交互」容易达成。**仍然保留 2s/3s 超时 + 后台静默重试**，因为用户从后台切回标签页时会触发二次调用，该链路真会超时。设计不变，风险等级由"高"降为"低" |
 | **Q6** | **是否需要邮箱验证**才能同步数据？ | 建议 P0 不需要（降低注册门槛、无邮件通道），列为 P2 |
 | **Q7** | **登录后是否保留"本机多账号"功能**？ | 建议：登录态**隐藏**"切换本机账号"，游客态保留，避免两套账号概念混淆。若需保留请确认交互 |
+| ~~Q8~~ | （已拍板，见上） | 前后端统一 UTC+8，见 §4.5 |
+| **Q9**（v1.1，已确认；**数字已经过二次核对，请勿再改**） | **签到奖励重复领取** | 架构师的三层防护（双端取 max + 未来时间戳收敛 + 上界 3650）只保护了 `last_daily_checkin` 与 `consecutive_login_days` 两个**守卫字段**，但签到奖励走的是**增量累加**通道，跨设备同日双签 / 回拨系统时间仍会重复发放。**P0 接受该缺口，P1 用 SYNC-12 收口。**<br><br>**单次爆炸半径（代码实测，务必以此为准）**：<br>• **+50 XP** —— `userStore.ts` `DAILY_XP = 50`<br>• **+500 欢乐豆** —— `Home.tsx:10` `CHECKIN_CHIPS = 500`，在 `:32`（自动签到）与 `:45`（手动签到）两处均执行 `saveProfile({...p, points: p.points + CHECKIN_CHIPS})`；`:116` 按钮文案「领取今日 500 欢乐豆 + 50 XP」、`:34/:46` toast 均可佐证<br><br>⚠️ **常见误判**：`points.ts` 的 `claimRelief()`（+2000，`DAILY_BONUS`）是**另一条独立通路**（破产续杯，`Profile.tsx:186` 与 `PokerTrainer.tsx:364` 仅在 `points < BUY_IN(2000)` 时渲染），**不是**签到奖励，不要与 `CHECKIN_CHIPS` 混淆。<br><br>**因此该缺口并非"纯装饰性"**：500 欢乐豆 = `BUY_IN(2000)` 的 25%、初始资金 `STARTING_POINTS(10000)` 的 5%，属**可消费的牌桌货币**。维持 P0 接受的理由是可利用性低（需手动回拨系统时间、无法自动化、单次收益小），且 G3「零破坏」优先级更高，而非因为"没有货币价值" |
 
 ---
 
@@ -645,7 +741,7 @@ password_resets (id bigserial PK, user_id uuid FK, token_hash text,
 | 修改 | `src/App.tsx` | 路由追加 `/login`、`/register`；`AccountGate` 放行逻辑（UI-06） |
 | 修改 | `src/components/AccountGate.tsx` | 三入口欢迎页 |
 | 修改 | `src/pages/Profile.tsx` | 云同步卡 + 账号区分叉（UI-03） |
-| 修改 | `src/store/drillStats.ts`、`src/store/points.ts` | **保持导出签名不变**，内部收敛为统一写入口（见 §5.5） |
+| 修改 | `src/store/drillStats.ts`、`src/store/points.ts` | **保持导出签名不变**，内部收敛为统一写入口（见 §5.6） |
 | 修改 | `server/standalone-entry.ts` | 在 `createServer` 回调中增加 `/api/*` 路由分发与 JSON body 解析 |
 | 修改 | `render.yaml` | 新增三个环境变量占位（`sync: false`，在 Render 面板填值） |
 | 修改 | `.gitignore` | 追加 `.env*`、`!.env.example` |

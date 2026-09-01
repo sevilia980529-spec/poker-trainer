@@ -36,8 +36,26 @@ export function defaultProfile(): PlayerProfile {
   };
 }
 
-export function saveProfile(p: PlayerProfile) {
+type ProfileWriteListener = (() => void) | null;
+let profileWriteListener: ProfileWriteListener = null;
+
+/**
+ * 注册进度写入监听器（syncEngine 用它感知本地进度变化并触发增量上报）。
+ * 传 null 取消。注意：writeLocalSnapshot 走 saveProfileRaw（不触发本监听），
+ * 且调用时已被 syncEngine 的 suppress 包裹，避免「写本地 → 又上报」回环。
+ */
+export function __onWrite(cb: ProfileWriteListener): void {
+  profileWriteListener = cb;
+}
+
+/** 原始写库：只落盘，不通知监听器（供本地快照回写使用）。 */
+export function saveProfileRaw(p: PlayerProfile): void {
   localStorage.setItem(KEY, JSON.stringify(p));
+}
+
+export function saveProfile(p: PlayerProfile): void {
+  saveProfileRaw(p);
+  profileWriteListener?.();
 }
 
 /** 积分不足时领取补给 */

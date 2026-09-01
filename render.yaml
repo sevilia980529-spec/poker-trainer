@@ -1,4 +1,8 @@
 # Render 一键部署配置（https://render.com → New → Blueprint）
+#
+# ⚠️ 两个 Supabase 变量都是 sync:false —— 不写入版本库，
+#    部署前必须在 Render Dashboard → Environment 面板手动填值。
+#    留空则 CLOUD_ENABLED=false，应用自动降级为纯游客模式，不会崩。
 services:
   - type: web
     name: poker-trainer
@@ -6,6 +10,15 @@ services:
     plan: free
     buildCommand: npm ci --include=dev && npm run build && npm run build:server
     startCommand: node dist-server/server.mjs
+    healthCheckPath: /api/health          # ★ 轻量探活，避免冷启动期间被判死重启
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: "22"                       # ★ 固定 Node 版本，避免默认版本漂移
+      - key: SESSION_SECRET
+        generateValue: true               # ★ Render 自动生成 32 字节安全随机值
+      - key: SUPABASE_URL
+        sync: false                       # ★ 必须在 Render 面板手填
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false                       # ★ 密钥绝不进仓库

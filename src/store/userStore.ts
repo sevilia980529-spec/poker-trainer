@@ -4,6 +4,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { getLevelProgress, type Level } from '../lib/level';
+import { dayIndex } from '../../shared/constants';
 
 export interface Account {
   id: string;
@@ -52,18 +53,14 @@ function genId() {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
+// 签到/连续天判定统一按 UTC+8（北京时区）计算「天」，
+// 与设计决策（ARCH §12-Q8）一致，避免用户所在时区跨日导致的误判。
 function isSameDay(a: number, b: number) {
-  const da = new Date(a);
-  const db = new Date(b);
-  return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
+  return dayIndex(a) === dayIndex(b);
 }
 
 function isConsecutiveDay(prev: number, curr: number) {
-  const d1 = new Date(prev);
-  const d2 = new Date(curr);
-  d1.setHours(0, 0, 0, 0);
-  d2.setHours(0, 0, 0, 0);
-  return (d2.getTime() - d1.getTime()) / 86400000 === 1;
+  return dayIndex(curr) - dayIndex(prev) === 1;
 }
 
 function mirror(acc: Account) {

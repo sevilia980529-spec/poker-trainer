@@ -97,31 +97,36 @@ function emailLocalPart(email: string): string {
 /**
  * 校验密码合法性（PRD AUTH-03）：
  * - 长度 8–64
- * - 必须同时含字母和数字
- * - 不能是纯重复字符
- * - 若传了 email，不能与邮箱前缀（@ 前部分）相同，忽略大小写
+ * 校验顺序经 team-lead 裁决后调整过，顺序本身有含义，不要随意调换：
+ * 「纯重复字符」必须排在「同时含字母和数字」之前 —— 单字符重复串不可能同时含
+ * 字母和数字，若反过来排，该规则会变成永不触发的死代码（穷举 280 组命中 0 次）。
+ *
+ * 规则（按序）：
+ * 1. 长度 8–64
+ * 2. 不能是纯重复字符（如 aaaaaaaa）
+ * 3. 必须同时含字母和数字
+ * 4. 若传了 email，不能与邮箱前缀（@ 前部分）相同，忽略大小写
+ *
+ * 注意：本函数把空串也当作「长度不足」处理，返回长度文案而非「请输入密码」。
+ * 登录页若需要区分「未填写」，应在调用前自行判空，不要在这里加分支
+ * —— 否则会与服务端文案产生分歧（PRD 要求前后端双重校验且文案一致）。
  */
 export function validatePassword(pwd: string, email?: string): { ok: boolean; reason?: string } {
-  if (!pwd) {
-    return { ok: false, reason: '请输入密码' };
+  // 1. 长度 8–64（空串长度 0，同样落在这一条）
+  if (pwd.length < PASSWORD_MIN_LENGTH || pwd.length > PASSWORD_MAX_LENGTH) {
+    return { ok: false, reason: `密码长度需为 ${PASSWORD_MIN_LENGTH}-${PASSWORD_MAX_LENGTH} 位` };
   }
-  if (pwd.length < PASSWORD_MIN_LENGTH) {
-    return { ok: false, reason: `密码至少 ${PASSWORD_MIN_LENGTH} 位` };
-  }
-  if (pwd.length > PASSWORD_MAX_LENGTH) {
-    return { ok: false, reason: `密码最多 ${PASSWORD_MAX_LENGTH} 位` };
-  }
-  if (!/[A-Za-z]/.test(pwd)) {
-    return { ok: false, reason: '密码需包含字母' };
-  }
-  if (!/\d/.test(pwd)) {
-    return { ok: false, reason: '密码需包含数字' };
-  }
+  // 2. 不能是纯重复字符（必须排在字母/数字检查之前，否则不可达）
   if (isRepeatedChar(pwd)) {
     return { ok: false, reason: '密码不能是重复字符' };
   }
+  // 3. 必须同时含字母和数字
+  if (!/[A-Za-z]/.test(pwd) || !/\d/.test(pwd)) {
+    return { ok: false, reason: '密码需同时包含字母和数字' };
+  }
+  // 4. 不能与邮箱前缀相同，忽略大小写
   if (email && pwd.toLowerCase() === emailLocalPart(email).trim().toLowerCase()) {
-    return { ok: false, reason: '密码不能与邮箱名相同' };
+    return { ok: false, reason: '密码不能与邮箱相同' };
   }
   return { ok: true };
 }

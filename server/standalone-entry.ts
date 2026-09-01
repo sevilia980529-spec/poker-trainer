@@ -6,10 +6,12 @@ import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
+import { handleApi } from './api';
 import { attachRoomServer } from './rooms';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.resolve(__dirname, '../dist');
+// PORT 在模块顶层读取是安全的：production 下环境变量先于进程启动注入
 const PORT = Number(process.env.PORT ?? 7100);
 
 const MIME: Record<string, string> = {
@@ -27,6 +29,8 @@ const MIME: Record<string, string> = {
 
 const server = http.createServer(async (req, res) => {
   try {
+    // ★ 云端账号 API：/api/* 优先接管；返回 false 才走静态文件逻辑
+    if (await handleApi(req, res)) return;
     let urlPath = decodeURIComponent((req.url ?? '/').split('?')[0]);
     if (urlPath === '/') urlPath = '/index.html';
     let filePath = path.join(DIST, urlPath);
@@ -51,5 +55,9 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 attachRoomServer(wss);
 
 server.listen(PORT, () => {
-  console.log(`[poker-trainer] 服务已启动: http://localhost:${PORT}（好友房 WS: /ws）`);
+  const cloud = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+  console.log(
+    `[poker-trainer] 服务已启动: http://localhost:${PORT}`
+    + `（好友房 WS: /ws，云端账号: ${cloud ? '已启用' : '未配置 → 游客模式'}）`,
+  );
 });

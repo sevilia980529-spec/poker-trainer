@@ -69,7 +69,7 @@ classDiagram
     }
 
     class UserStore {
-        <<existing · 零改动>>
+        <<existing · 仅改 2 个私有函数体>>
         +number xp
         +string nickname
         +string avatar
@@ -82,7 +82,10 @@ classDiagram
         +setNickname(n) void
         +updateAccount(id, patch) void
         +subscribe(listener) Unsubscribe
+        -isSameDay(a, b) boolean
+        -isConsecutiveDay(prev, curr) boolean
     }
+    note for UserStore "M13（PM Q8）：isSameDay / isConsecutiveDay\n改用 UTC+8 的 dayIndex()，根治 DST bug。\n导出签名与 state 结构零变化，NFR-04 仍满足。"
 
     class Points {
         <<existing · +3 行>>
@@ -130,8 +133,10 @@ classDiagram
         +push(ctx) void
         +pull(ctx) void
         +migrate(ctx) void
+        +checkin(ctx) void
         -computeMigrate(cloud, req, now) Result
     }
+    note for SyncRoutes "migrate 支持 profileOverride\n（PM Q2：显式选择压过一切 LWW）。\ncheckin 为 P1 SYNC-12 占位，P0 返回 501。"
 
     class Session {
         +sign(payload) string
@@ -154,8 +159,10 @@ classDiagram
         +mergeProgress(cloud, payload, now) ProgressRow
         +mergeCheckin(cloud, inc, now) Checkin
         +mergePerCategory(cloud, delta) Record
+        +clampClientTs(clientTs, serverNow) number
         -clampInt(v, lo, hi) number
     }
+    note for MergeEngine "clampClientTs（PM Q1①）：clientTs > serverNow + 300s\n即夹到 serverNow，非法值回落到 serverNow。\n累加型字段另有单次 delta 上限 10_000_000 兜底（PM Q9）。"
 
     class ConfigModule {
         <<server/config.ts>>
@@ -170,7 +177,64 @@ classDiagram
         +unknown details
     }
 
+    class UseCloudBootstrap {
+        <<hook>>
+        +healthAndMe() Promise~void~
+        -backoffMs number[]
+    }
+    note for UseCloudBootstrap "并行 health(3s) + me(2s)，me 不阻塞首屏。\nme 成功 → captureLocal → applyRemote → start。\n冷启动 30–60s 时先以游客渲染，后台静默重试。"
+
+    class MigrateDialog {
+        <<UI-05>>
+        -MigrateStrategy strategy
+        -ProfileOverride override
+        -boolean submitting
+        +open() void
+        +onConfirm() Promise~void~
+        +onDismiss() void
+        -renderSummaryRow() Node
+        -renderConflictSwitch() Node
+    }
+    note for MigrateDialog "PM Q2：摘要卡固定展示昵称/头像归属行\n「本机值 → 迁移后生效值」；真冲突时内联二选一，\n默认「保留云端」。\nPM Q3：onDismiss 必须 rebase（setBase）后再释放挂起。"
+
+    class CloudSyncCard {
+        <<UI-03 · 五态>>
+        +render() Node
+        +onManualSync() Promise~void~
+    }
+    note for CloudSyncCard "idle / syncing / uploaded / offline / unavailable。\nPM Q4：立即同步 = 先 push 后 pull，\npush 失败禁止 pull（否则数据丢失）。"
+
+    class GuestBanner {
+        <<UI-04>>
+        +render() Node
+        -dismissed boolean
+    }
+
+    class RegisterPage {
+        <<UI-01>>
+        +onSubmit() Promise~void~
+    }
+
+    class LoginPage {
+        <<UI-02>>
+        +onSubmit() Promise~void~
+    }
+    note for RegisterPage "PM Q3：submit 回调里拿到 auth 响应、\n判定 needsMigrate 的同一刻即 setSuspended(true)，\n不得等弹窗渲染（Home 的自动签到会抢跑）。"
+
     AuthStore ..> ApiClient : 驱动请求
+    UseCloudBootstrap ..> ApiClient : health / me
+    UseCloudBootstrap ..> AuthStore : 写入状态
+    UseCloudBootstrap ..> SyncEngine : start / applyRemote
+    RegisterPage ..> AuthStore : register
+    LoginPage ..> AuthStore : login
+    RegisterPage ..> SyncEngine : setSuspended(true)
+    LoginPage ..> SyncEngine : setSuspended(true)
+    MigrateDialog ..> AuthStore : 读 capturedLocal
+    MigrateDialog ..> ApiClient : migrate(含 profileOverride)
+    MigrateDialog ..> SyncEngine : setBase(rebase) + setSuspended(false)
+    CloudSyncCard ..> SyncEngine : manualSync
+    CloudSyncCard ..> AuthStore : 读 syncStatus / user
+    GuestBanner ..> AuthStore : 读 status / cloudEnabled
     SyncEngine ..> ApiClient : syncPush / syncPull
     SyncEngine ..> LocalSnapshot : 读写快照
     SyncEngine ..> AuthStore : 更新 syncStatus / pendingCount

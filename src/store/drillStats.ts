@@ -12,6 +12,22 @@ export interface DrillStats {
 const KEY = 'poker-trainer-drill-stats-v1';
 export const DRILL_REWARD = 20; // 答对奖励积分
 
+type DrillWriteListener = (() => void) | null;
+let onWriteListener: DrillWriteListener = null;
+
+/**
+ * 注册训练统计写入监听器（syncEngine 用它感知本地进度变化并触发增量上报）。
+ * 传 null 取消。writeLocalSnapshot 走 writeDrillStatsRaw（不触发本监听）。
+ */
+export function __onWrite(cb: DrillWriteListener): void {
+  onWriteListener = cb;
+}
+
+/** 原始写库：只落盘，不通知监听器（供本地快照回写使用）。 */
+export function writeDrillStatsRaw(stats: DrillStats): void {
+  localStorage.setItem(KEY, JSON.stringify(stats));
+}
+
 export function loadDrillStats(): DrillStats {
   try {
     const raw = localStorage.getItem(KEY);
@@ -34,6 +50,7 @@ export function recordAnswer(stats: DrillStats, category: DrillCategory, isCorre
       },
     },
   };
-  localStorage.setItem(KEY, JSON.stringify(next));
+  writeDrillStatsRaw(next);
+  onWriteListener?.();
   return next;
 }

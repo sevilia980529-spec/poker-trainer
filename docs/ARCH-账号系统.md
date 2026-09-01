@@ -34,6 +34,9 @@
 | F12 | 冷启动真实影响面 | Render 冷启动 30–60s 主要卡在**首个 HTML/JS 请求**；等 React 挂载后再发 `/api/health` 时服务已热 | `/api/health` 实际几乎不会超时。但**仍按 PRD 保留 2s/3s 超时 + 后台重试**，因为用户可能从后台切回标签页触发二次调用 |
 | F13 | Render 免费层无持久盘 | `node:crypto` 无状态令牌是唯一可行方案；P1 限流 Map 重启即失效（PRD 已接受 best-effort） | 与选型一致 |
 | F14 | `src/lib/avatar.ts` | `compressAvatar(file, maxSize=256)` 已存在，输出 WebP dataURL | 复用；P0 限制落库 ≤128KB，超了服务端 400 |
+| F15 | **按"天"判定的位置是 3 处，不是 2 处** | `userStore.ts:55 isSameDay`、`userStore.ts:61 isConsecutiveDay`、**`Home.tsx:52 new Date().setHours(0,0,0,0)`** | 改时区必须三处同改。若只改 userStore，`dailyCheckin()` 的判定会与 Home 按钮的 disabled 状态互相矛盾（见 §12-Q8） |
+| F16 | **`isConsecutiveDay` 存在既有 DST bug** | `d2 - d1) / 86400000 === 1`：夏令时切换日当天只有 23h（春进）或 25h（秋退），比值是 0.958 / 1.042，**都 ≠ 1** → 连续签到被误判中断 | 现有 bug，每年断 2 次。改用 UTC+8 的 `dayIndex()` 后 UTC+8 无夏令时，**顺带修好**（见 §12-Q8） |
+| F17 | **好友房昵称不读 userStore** | `FriendRoom.tsx:35` 用的是 `localStorage.getItem('poker-trainer-nickname')`，与 `userStore.nickname` 是两套数据（仅 `avatar` 在 446 行读了 `useUserStore.getState().avatar`） | 云端拉取**不会**自动更新好友房昵称（更正 PM v1.1 的说明，见 §12-Q7） |
 
 ---
 
@@ -65,7 +68,7 @@ flowchart TB
 
     subgraph ST["② 状态层（zustand / localStorage）"]
         direction LR
-        S1["userStore（**零改动**）<br/>persist: pokermind-user"]
+        S1["userStore（同步机制零侵入）<br/>persist: pokermind-user<br/>M13 仅改 2 个私有日期函数"]
         S2["authStore（新增）<br/>status/user/cloudEnabled/syncStatus"]
         S3["points.ts（+1 行 notifyWrite）<br/>poker-trainer-profile-v1"]
         S4["drillStats.ts（+1 行 notifyWrite）<br/>poker-trainer-drill-stats-v1"]
@@ -139,7 +142,7 @@ flowchart TB
 | **不引入 `@supabase/supabase-js`** | 见 §1.1 校验方式。我们只需要 `select / insert / patch / eq filter`，`fetch` 20 行搞定 |
 | **合并逻辑写在 TS（`server/merge.ts`），不写 SQL RPC** | ① 改合并矩阵不用在 Supabase 面板跑迁移；② 可用 `node --test` 单测；③ CAS 条件 PATCH 已保证原子性。代价：push 多 1 次读往返（约 +150~300ms），但 push 是防抖后的后台行为，不阻塞任何交互 |
 | **不新增「离线队列」数据结构** | delta = `当前本地值 − base`。base 持久化在 localStorage，因此**离线 N 天后的全部增量天然就是队列**，刷新/掉电都不丢（SYNC-07 的持久化诉求免费达成） |
-| **`userStore.ts` 零改动** | 用 `useUserStore.subscribe()` 外部挂载。对比"改 store 内部"：风险更低、diff 更干净、NFR-04 超额满足 |
+| **同步机制对 `userStore.ts` 零侵入** | 用 `useUserStore.subscribe()` 外部挂载，不在 store 内部加任何挂钩代码。对比"改 store 内部"：风险更低、diff 更干净、NFR-04 超额满足。<br/>⚠️ 注意区分：本轮另有 **M13**（`isSameDay`/`isConsecutiveDay` 改走 UTC+8），属**时区口径修复**而非同步机制，详见 §6.12 |
 | **昵称/头像不走 sync/push，走独立的 `PUT /api/profile`** | 头像 dataURL ≤128KB，若混入 push 会撑爆 NFR-06 的「单次 payload < 8KB」。拆出去后 push payload 实测约 1~2KB |
 | **`shared/` 目录放纯常量与校验函数** | 前后端共用邮箱正则、密码规则、字段合并分类表、ZERO_BASELINE，杜绝两处漂移。纯 TS 无依赖，Vite 与 esbuild 都能直接打 |
 
@@ -147,7 +150,7 @@ flowchart TB
 
 ## 2. 文件清单
 
-### 2.1 新增文件（19 个）
+### 2.1 新增文件（26 个）
 
 | # | 路径 | 职责 | 预估量 |
 | --- | --- | --- | --- |
@@ -162,8 +165,8 @@ flowchart TB
 | 9 | `src/components/common/Input.tsx` | 暗金风格输入框（48px、error 态、右侧插槽 44×44） | 小（~70 行） |
 | 10 | `src/components/common/Spinner.tsx` | 金色旋转指示器（复用 `animate-spin` + gold 描边） | 小（~20 行） |
 | 11 | `src/components/GuestBanner.tsx` | UI-04 游客提示条（通栏 44px、可关、对局页隐藏） | 小（~70 行） |
-| 12 | `src/components/CloudSyncCard.tsx` | UI-03 云同步状态卡（已同步/同步中/离线/不可用 四态） | 中（~120 行） |
-| 13 | `src/components/MigrateDialog.tsx` | UI-05 迁移引导弹窗（本机摘要 + 三策略 + 二次确认） | 大（~220 行） |
+| 12 | `src/components/CloudSyncCard.tsx` | UI-03 云同步状态卡（已同步/同步中/**已上传**/离线/不可用 **五态**，第 5 态见 §6.10） | 中（~140 行） |
+| 13 | `src/components/MigrateDialog.tsx` | UI-05 迁移引导弹窗（本机摘要 **含昵称/头像归属行（PM Q2 必做）** + 三策略 + 真冲突二选一 + 二次确认 + 挂起/rebase（PM Q3）） | 大（~280 行） |
 | 14 | `src/pages/Register.tsx` | UI-01 注册页 | 大（~260 行） |
 | 15 | `src/pages/Login.tsx` | UI-02 登录页 | 中（~180 行） |
 | 16 | `server/config.ts` | 读环境变量，导出 `CLOUD_ENABLED`、`SUPABASE_URL`、`SERVICE_ROLE_KEY`、`SESSION_SECRET` | 小（~40 行） |
@@ -178,7 +181,7 @@ flowchart TB
 | 25 | `supabase/schema.sql` | 建表 + 索引 + 约束 + RLS 说明 + P1/P2 预留表 | 已完成（见仓库） |
 | 26 | `.env.example` | 只写键名不写值 | 小（~12 行） |
 
-### 2.2 修改文件（10 个）
+### 2.2 修改文件（14 个）
 
 | # | 路径 | 改什么 | 预估量 |
 | --- | --- | --- | --- |
@@ -194,17 +197,25 @@ flowchart TB
 | M10 | `.gitignore` | 追加 `.env*` 与 `!.env.example` | 小（+4 行） |
 | M11 | `package.json` | 新增 `bcryptjs@^3.0.3`（**不要** `@types/bcryptjs`，是废弃 stub）；新增 `typecheck` / `dev:server` / `check:secrets` 脚本与 `engines` | 小（+8 行） |
 | M12 | `tsconfig.node.json` | `include` 追加 `"server"`、`"shared"` | 小（+2 行） |
+| **M13** | **`src/store/userStore.ts`** | ⚠️ **本轮新增**（原为"零改动"）：`isSameDay` / `isConsecutiveDay` 两个**内部私有函数**改用 `dayIndex()`（UTC+8）。**导出签名、state 结构、所有 action 一律不变**，NFR-04 仍然满足 | **小（改 2 个函数体，各 1 行）** |
+| **M14** | **`src/pages/Home.tsx`** | ⚠️ **本轮新增**：`:52` `new Date().setHours(0,0,0,0)` → `dayStartUtc8(Date.now())`。**必须与 M13 同改**，否则按钮状态与 `dailyCheckin()` 判定矛盾 | **小（2 行）** |
+
+> **为什么本轮要动 `userStore.ts`**：PM v1.1 要求前后端统一 UTC+8（Q8）。见 §12 Q8-续 的完整风险评估 —— 不改会在 P1 SYNC-12 落地时变成"前端提示成功、数据没变"的静默 bug，且顺带修掉一个每年断 2 次连续签到的**既有 DST bug**。两个函数都是文件内私有，不触碰任何导出。
 
 ### 2.3 明确**不改动**的文件
 
 ```
-src/store/userStore.ts                 ← 零改动（NFR-04 硬要求，用 subscribe 挂载）
-src/pages/{Home,PokerTrainer,Blackjack,Drills,TrainingHub,FriendRoom,Guandan}.tsx
+src/pages/{PokerTrainer,Blackjack,Drills,TrainingHub,FriendRoom,Guandan}.tsx
 src/components/common/Header.tsx
 server/rooms.ts                        ← 好友房逻辑
 src/ai/**、src/lib/level.ts            ← 玩法与段位推导
 ```
-> `FriendRoom.tsx` 的昵称来源（localStorage `poker-trainer-nickname`）**本次不动**。PRD §0.2 提到"昵称来源改为云端优先"属 P1 优化，P0 保持现状可避免触碰好友房链路（G3 零破坏优先）。
+
+> **⚠️ `src/store/userStore.ts` 已从本表移出**（改列 M13）。它仍是"零结构性改动"：只改 `isSameDay` / `isConsecutiveDay` 两个**文件内私有函数**的函数体（各 1 行），**不触碰任何导出签名、state 字段、action 语义**。NFR-04 的判定标准是"现有调用点无需修改"，此改动完全满足 —— 9 个页面调用 `dailyCheckin()` 的代码一行不动。详见 §12 Q8-续。
+>
+> **⚠️ `src/pages/Home.tsx` 已从本表移出**（改列 M14）。只改第 52 行的日期展示口径（2 行），不碰任何玩法逻辑。
+
+> `FriendRoom.tsx` 的昵称来源（localStorage `poker-trainer-nickname`）**本次不动**。PRD §0.2 提到"昵称来源改为云端优先"属 P1 优化，P0 保持现状可避免触碰好友房链路（G3 零破坏优先）。注意 PRD v1.1 中"SYNC-01 拉取后写进 userStore，FriendRoom 读 userStore 就自动拿到云端昵称"的说法**不成立**，见 §12 Q7-续。
 
 ---
 
@@ -321,6 +332,11 @@ export interface MigrateRequest {
   /** 本机昵称/头像，供 LWW 决策 */
   profile: { nickname: string; avatar: string };
   clientUpdatedAt: number;
+  /**
+   * PM Q2：真冲突（双方昵称/头像均非默认且不等）时用户的显式选择。
+   * 存在时**压过一切 LWW 判定**（含 P1 的时间戳 LWW）。见 §6.8。
+   */
+  profileOverride?: 'keep_cloud' | 'use_local';
 }
 
 export interface MigrateResponse {
@@ -408,7 +424,9 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import type { CloudUser } from '../types/cloud';
 
 export type AuthStatus = 'unknown' | 'guest' | 'authenticated';
-export type SyncStatus = 'idle' | 'syncing' | 'offline' | 'unavailable';
+// ⚠️ 5 态：PRD §6.3 原定义 4 态，PM Q4 追加 'uploaded'（push 成功但 pull 失败）
+//   详见 §6.10 —— 此时云端已收到增量，绝不可再拉云端覆盖本地
+export type SyncStatus = 'idle' | 'syncing' | 'uploaded' | 'offline' | 'unavailable';
 
 interface AuthState {
   /* ---- 内存态（不持久化）---- */
@@ -500,13 +518,20 @@ classDiagram
         +SyncStatus syncStatus
         +CloudUser user
         +boolean cloudEnabled
+        +boolean healthChecked
+        +number lastSyncedAt
         +number pendingCount
         +MigratePrompt migratePrompt
+        +CapturedLocal capturedLocal
         +setHealth(cloudEnabled) void
         +setAuthenticated(user) void
         +setGuest() void
         +setSyncStatus(s) void
+        +markSynced(pending) void
+        +setPending(n) void
         +openMigratePrompt(p) void
+        +closeMigratePrompt() void
+        +captureLocal(c) void
         +reset() void
     }
 
@@ -521,16 +546,17 @@ classDiagram
         +syncPull() Promise~SyncPullResponse~
         +migrate(req) Promise~MigrateResponse~
         -request(path, init, timeoutMs) Promise~ApiResponse~
-        -withRetry(fn, backoff) Promise~T~
+        -withRetry(fn, backoffMs) Promise~T~
     }
 
     class SyncEngine {
         -string userId
         -ProgressSnapshot base
         -number baseRevision
-        -Timer debouncer
+        -number debouncer
         -boolean suspended
         -boolean suppressNotify
+        -boolean inFlight
         +start(userId) void
         +stop() void
         +setSuspended(v) void
@@ -540,9 +566,13 @@ classDiagram
         +applyRemote(snapshot, revision) void
         +setBase(snapshot, revision) void
         +computeDelta() SyncPushRequest
+        +hasPending() boolean
         +pendingCount() number
         -push() Promise~boolean~
         -applyConflict(conflict) void
+        -flushNow() void
+        -loadBase() void
+        -persistBase() void
     }
 
     class LocalSnapshot {
@@ -553,90 +583,194 @@ classDiagram
     }
 
     class UserStore {
-        <<existing, 零改动>>
+        <<existing · 仅改 2 个私有函数体>>
         +number xp
         +string nickname
+        +string avatar
         +number lastDailyCheckin
         +number consecutiveLoginDays
+        +Account[] accounts
+        +string activeId
         +addXP(n) void
         +dailyCheckin() Result
+        +setNickname(n) void
+        +updateAccount(id, patch) void
         +subscribe(listener) Unsubscribe
+        -isSameDay(a, b) boolean
+        -isConsecutiveDay(prev, curr) boolean
     }
+    note for UserStore "M13（PM Q8）：isSameDay / isConsecutiveDay\n改用 UTC+8 的 dayIndex()，根治 DST bug。\n导出签名与 state 结构零变化，NFR-04 仍满足。"
 
     class Points {
-        <<existing, +1 行>>
+        <<existing · +3 行>>
         +loadProfile() PlayerProfile
         +saveProfile(p) void
+        +saveProfileRaw(p) void
+        +claimRelief(p) PlayerProfile
+        +defaultProfile() PlayerProfile
+        +__onWrite(fn) void
         -notifyWrite() void
     }
 
     class DrillStats {
-        <<existing, +1 行>>
+        <<existing · +3 行>>
         +loadDrillStats() DrillStats
         +recordAnswer(stats, cat, ok) DrillStats
+        +writeDrillStatsRaw(s) void
+        +__onWrite(fn) void
         -notifyWrite() void
     }
 
     class ApiRouter {
         +handleApi(req, res) Promise~boolean~
-        -readJsonBody(req, limit) Promise~any~
-        -dispatch(method, path, ctx) Promise~void~
-        -sendError(res, err) void
+        +readJsonBody(req, limit) Promise~any~
+        -ROUTES Record
+        -NEED_AUTH Set
+        -BODY_LIMIT Record
+        -dispatch(key, ctx) Promise~void~
     }
 
     class AuthRoutes {
-        +register(ctx) Promise~void~
-        +login(ctx) Promise~void~
-        +logout(ctx) Promise~void~
-        +me(ctx) Promise~void~
-        +updateProfile(ctx) Promise~void~
-        +resetRequest(ctx) Promise~void~
+        +health(ctx) void
+        +register(ctx) void
+        +login(ctx) void
+        +logout(ctx) void
+        +me(ctx) void
+        +updateProfile(ctx) void
+        +resetRequest(ctx) void
+        +resetConfirm(ctx) void
+        +notImplemented(ctx) void
+        -toCloudUser(row) CloudUser
     }
 
     class SyncRoutes {
-        +push(ctx) Promise~void~
-        +pull(ctx) Promise~void~
-        +migrate(ctx) Promise~void~
+        +push(ctx) void
+        +pull(ctx) void
+        +migrate(ctx) void
+        +checkin(ctx) void
+        -computeMigrate(cloud, req, now) Result
     }
+    note for SyncRoutes "migrate 支持 profileOverride\n（PM Q2：显式选择压过一切 LWW）。\ncheckin 为 P1 SYNC-12 占位，P0 返回 501。"
 
     class Session {
         +sign(payload) string
-        +verify(token) SessionPayload
+        +verifyToken(token) SessionPayload
+        +verifySession(req) SessionPayload
         +readCookie(req) string
         +writeCookie(res, token) void
         +clearCookie(res) void
     }
 
     class SupabaseClient {
+        -REST string
         +sbGet(table, query) Promise~Row[]~
         +sbInsert(table, body, prefer) Promise~Row[]~
         +sbPatch(table, filters, body) Promise~Row[]~
+        -call(path, init) Promise~any~
     }
 
     class MergeEngine {
         +mergeProgress(cloud, payload, now) ProgressRow
         +mergeCheckin(cloud, inc, now) Checkin
-        +mergeMigrate(cloud, strategy, snapshot) ProgressRow
-        -mergePerCategory(cloud, delta) Record
+        +mergePerCategory(cloud, delta) Record
+        +clampClientTs(clientTs, serverNow) number
+        -clampInt(v, lo, hi) number
+    }
+    note for MergeEngine "clampClientTs（PM Q1①）：clientTs > serverNow + 300s\n即夹到 serverNow，非法值回落到 serverNow。\n累加型字段另有单次 delta 上限 10_000_000 兜底（PM Q9）。"
+
+    class ConfigModule {
+        <<server/config.ts>>
+        +getConfig() ServerConfig
+        -CLOUD_ENABLED boolean
     }
 
-    AuthStore ..> ApiClient : 驱动
+    class HttpError {
+        +number status
+        +ApiErrorCode code
+        +string message
+        +unknown details
+    }
+
+    class UseCloudBootstrap {
+        <<hook>>
+        +healthAndMe() Promise~void~
+        -backoffMs number[]
+    }
+    note for UseCloudBootstrap "并行 health(3s) + me(2s)，me 不阻塞首屏。\nme 成功 → captureLocal → applyRemote → start。\n冷启动 30–60s 时先以游客渲染，后台静默重试。"
+
+    class MigrateDialog {
+        <<UI-05>>
+        -MigrateStrategy strategy
+        -ProfileOverride override
+        -boolean submitting
+        +open() void
+        +onConfirm() Promise~void~
+        +onDismiss() void
+        -renderSummaryRow() Node
+        -renderConflictSwitch() Node
+    }
+    note for MigrateDialog "PM Q2：摘要卡固定展示昵称/头像归属行\n「本机值 → 迁移后生效值」；真冲突时内联二选一，\n默认「保留云端」。\nPM Q3：onDismiss 必须 rebase（setBase）后再释放挂起。"
+
+    class CloudSyncCard {
+        <<UI-03 · 五态>>
+        +render() Node
+        +onManualSync() Promise~void~
+    }
+    note for CloudSyncCard "idle / syncing / uploaded / offline / unavailable。\nPM Q4：立即同步 = 先 push 后 pull，\npush 失败禁止 pull（否则数据丢失）。"
+
+    class GuestBanner {
+        <<UI-04>>
+        +render() Node
+        -dismissed boolean
+    }
+
+    class RegisterPage {
+        <<UI-01>>
+        +onSubmit() Promise~void~
+    }
+
+    class LoginPage {
+        <<UI-02>>
+        +onSubmit() Promise~void~
+    }
+    note for RegisterPage "PM Q3：submit 回调里拿到 auth 响应、\n判定 needsMigrate 的同一刻即 setSuspended(true)，\n不得等弹窗渲染（Home 的自动签到会抢跑）。"
+
+    AuthStore ..> ApiClient : 驱动请求
+    UseCloudBootstrap ..> ApiClient : health / me
+    UseCloudBootstrap ..> AuthStore : 写入状态
+    UseCloudBootstrap ..> SyncEngine : start / applyRemote
+    RegisterPage ..> AuthStore : register
+    LoginPage ..> AuthStore : login
+    RegisterPage ..> SyncEngine : setSuspended(true)
+    LoginPage ..> SyncEngine : setSuspended(true)
+    MigrateDialog ..> AuthStore : 读 capturedLocal
+    MigrateDialog ..> ApiClient : migrate(含 profileOverride)
+    MigrateDialog ..> SyncEngine : setBase(rebase) + setSuspended(false)
+    CloudSyncCard ..> SyncEngine : manualSync
+    CloudSyncCard ..> AuthStore : 读 syncStatus / user
+    GuestBanner ..> AuthStore : 读 status / cloudEnabled
     SyncEngine ..> ApiClient : syncPush / syncPull
     SyncEngine ..> LocalSnapshot : 读写快照
-    SyncEngine ..> AuthStore : 更新 syncStatus
-    SyncEngine ..> UserStore : subscribe + setState
-    LocalSnapshot ..> UserStore : 读 xp/签到
+    SyncEngine ..> AuthStore : 更新 syncStatus / pendingCount
+    SyncEngine ..> UserStore : subscribe() + setState()
+    LocalSnapshot ..> UserStore : 读 xp / 签到
     LocalSnapshot ..> Points : 读 profile
     LocalSnapshot ..> DrillStats : 读 stats
-    Points ..> SyncEngine : notifyWrite
-    DrillStats ..> SyncEngine : notifyWrite
-    ApiRouter --> AuthRoutes
-    ApiRouter --> SyncRoutes
-    ApiRouter --> Session
-    AuthRoutes --> SupabaseClient
-    AuthRoutes --> Session
-    SyncRoutes --> SupabaseClient
-    SyncRoutes --> MergeEngine
+    Points ..> SyncEngine : notifyWrite -> markDirty
+    DrillStats ..> SyncEngine : notifyWrite -> markDirty
+    UserStore ..> SyncEngine : subscribe -> markDirty
+    ApiRouter --> AuthRoutes : 分发
+    ApiRouter --> SyncRoutes : 分发
+    ApiRouter --> Session : 鉴权
+    ApiRouter --> HttpError : 统一错误
+    AuthRoutes --> SupabaseClient : 读写
+    AuthRoutes --> Session : 签发 cookie
+    SyncRoutes --> SupabaseClient : 读写
+    SyncRoutes --> MergeEngine : 合并矩阵
+    SupabaseClient --> ConfigModule : 读密钥
+    Session --> ConfigModule : 读 SESSION_SECRET
+    AuthRoutes --> ConfigModule : 读 CLOUD_ENABLED
+    SyncRoutes --> ConfigModule : 读 CLOUD_ENABLED
 ```
 
 ---
@@ -871,14 +1005,20 @@ sequenceDiagram
     participant SR as syncRoutes.migrate
     participant SB as PostgREST
 
-    Note over MD: 注册/登录成功后打开，此时 syncEngine 已被 setSuspended(true)
+    Note over MD: ⚠️【PM Q3 硬化点①】挂起发生在 Register/Login 的 submit 回调里、<br/>拿到 auth 响应并判定 needsMigrate 的那一刻，<br/>早于 navigate('/') —— 不能等到弹窗渲染
     MD->>MD: 展示本机摘要（XP / 欢乐豆 / 答题·正确率 / 连续签到）
+    MD->>MD: 【PM Q2 必做】摘要卡固定追加昵称/头像归属行「本机值 → 迁移后生效值」
     MD->>MD: 若云端账号非新注册，顶部追加「云端现有：XP x · 欢乐豆 y」
+    alt 昵称/头像真冲突（双方均非默认且不等）
+        MD->>U: 内联二选一开关：保留云端「德州之王」(默认) / 改用本机「牌神」
+        U->>MD: 选择 → 请求体带 profileOverride
+    end
     U->>MD: 选择策略（默认「合并到云端」）→ 确认迁移
     alt 选中「以本机覆盖云端」
         MD->>U: 二次确认弹窗（列出将被丢弃的云端数值）
     end
-    MD->>API: POST /api/sync/migrate {strategy, snapshot, profile, clientUpdatedAt}
+    Note over MD: 提交用【冻结的】capturedLocal.snapshot；<br/>overwrite 策略才用实时的 readLocalSnapshot()
+    MD->>API: POST /api/sync/migrate {strategy, snapshot, profile, clientUpdatedAt, profileOverride?}
     API->>SR: fetch（8s，失败可重试）
     SR->>SB: GET /rest/v1/users?id=eq.<uid>（取 migrated_at）
     alt migrated_at 非空（此前已迁移）
@@ -890,13 +1030,19 @@ sequenceDiagram
         SB-->>SR: [cloud]
         SR->>SR: 三策略计算（见 §6.5）
         SR->>SB: PATCH user_progress?user_id=eq.<uid>&revision=eq.<cloud.revision><br/>{...merged, revision:+1} Prefer: return=representation
-        SR->>SB: PATCH users?id=eq.<uid>&migrated_at=is.null {migrated_at: now(),<br/>nickname?, avatar?（按策略 LWW）}
+        SR->>SB: PATCH users?id=eq.<uid>&migrated_at=is.null {migrated_at: now(),<br/>nickname?, avatar?（profileOverride > 默认值判定 > LWW）}
         SR-->>API: 200 {snapshot, revision, user, alreadyMigrated:false}
         API->>SE: applyRemote(snapshot, revision)
+        Note over SE: ⚠️【PM Q3 硬化点②】必须先 setBase(服务端合并快照)，<br/>再释放挂起。否则残留的 +2000 在释放瞬间被推上去
+        SE->>SE: setBase(snapshot, revision) → delta 归零 → 持久化 pm_sync_base_v1
         API->>MD: 关闭 + toast.success('进度已上传云端')
     end
     MD->>SE: setSuspended(false) → 恢复自动同步
     Note over U: 失败 → 弹窗回到可选状态 + 顶部红字「迁移失败：{原因}，可稍后重试」<br/>Profile 保留「把本机进度导入云端」入口
+    alt 用户点「稍后再说」/ ✕ / 遮罩 / 页面卸载
+        Note over SE: ⚠️【PM Q3 硬化点③】✕ 与遮罩 = 「稍后再说」，无第四种语义。<br/>释放挂起前必须 rebase：setBase(readLocalSnapshot(), baseRevision)。<br/>只释放挂起不 rebase → 冻结期增量被静默推上去，<br/>用户没做选择却已完成合并
+        MD->>SE: setBase(readLocalSnapshot(), baseRevision) → setSuspended(false)
+    end
 ```
 
 ---
@@ -905,7 +1051,10 @@ sequenceDiagram
 
 ### 6.1 如何在不改导出签名的前提下触发同步
 
-**结论：`points.ts` 与 `drillStats.ts` 各加 3 行，`userStore.ts` 加 0 行。**
+**结论：`points.ts` 与 `drillStats.ts` 各加 3 行，`userStore.ts` 为触发同步加 0 行。**
+
+> ⚠️ **澄清（PRD v1.1 之后）**：本节的「`userStore.ts` 加 0 行」特指**同步触发机制**——靠外部 `useUserStore.subscribe()` 挂载，不在文件里加任何挂钩代码。
+> `userStore.ts` 在本轮另有 **M13 改动**（`isSameDay` / `isConsecutiveDay` 两个私有函数改走 UTC+8 的 `dayIndex()`，见 §6.12 / §12 Q8-续），那是**时区口径修复**，与同步机制无关。两件事不要混淆：`subscribe()` 挂载保证零侵入，M13 保证签到口径前后端一致。
 
 #### 6.1.1 `src/store/points.ts`（M1）
 
@@ -944,7 +1093,9 @@ export function recordAnswer(stats: DrillStats, category: DrillCategory, isCorre
 > 避免 `store → lib → store` 的循环依赖（syncEngine 需要 import localSnapshot，localSnapshot 又要 import 这两个 store）。
 > 注册式回调把依赖方向变成单向：`syncEngine.start()` 时调用 `__onWrite(markDirty)`。
 
-#### 6.1.3 `userStore`：外部订阅（**文件本身零改动**）
+#### 6.1.3 `userStore`：外部订阅（**同步机制对文件零侵入**）
+
+> ⚠️ 本小节的"零侵入"仅指**同步触发**靠外部 `subscribe()` 完成。文件本身在 M13 中另有 2 行改动（UTC+8 日期口径），与本节无关，见 §6.12。
 
 ```ts
 // src/lib/syncEngine.ts —— start() 内
@@ -1341,6 +1492,292 @@ export function hasNonZeroProgress(s: ProgressSnapshot): boolean {
 ```
 > 需要给 `points.ts` / `drillStats.ts` 各补一个**不触发 notifyWrite 的原始写函数**（`saveProfileRaw` / `writeDrillStatsRaw`），内部实现相同，只是不调 `notifyWrite()`。这属于「小改」，不破坏任何现有导出签名。
 
+### 6.7 时钟偏差防护（PM Q1 约束①，P0 必做）
+
+**问题**：`clientUpdatedAt` 来自客户端时钟。某台设备时钟快 → 它的 `nickname` / `drill_streak` 永远赢，且用户完全无感知。
+
+**共享实现**（放 `shared/constants.ts` + `server/merge.ts` 各一份调用）：
+
+```ts
+// shared/constants.ts
+export const CLOCK_SKEW_TOLERANCE_MS = 300_000;   // 5 分钟
+
+/**
+ * 把客户端时间戳收敛到可信区间：
+ *   · 超前超过 5 分钟 → 判为时钟异常，收敛为 serverNow
+ *   · 非数字 / 负数 / 0  → 收敛为 serverNow
+ */
+export function clampClientTs(clientTs: unknown, serverNow: number): number {
+  if (typeof clientTs !== 'number' || !Number.isFinite(clientTs) || clientTs <= 0) return serverNow;
+  return clientTs > serverNow + CLOCK_SKEW_TOLERANCE_MS ? serverNow : Math.trunc(clientTs);
+}
+```
+
+**两个调用点**（`server/merge.ts` 与 `server/syncRoutes.ts` 共用同一个函数）：
+
+```ts
+// ① mergeProgress 中的 LWW 分支（drillStreak）
+const ts = clampClientTs(p.lww.clientUpdatedAt, now);
+if (p.lww && ts >= new Date(cloud.client_updated_at).getTime()) {
+  out.drill_streak = clampInt(p.lww.drillStreak, 0, 1e6);
+  out.client_updated_at = new Date(ts).toISOString();
+}
+
+// ② migrate 的 clientUpdatedAt（昵称/头像 LWW；P0 用默认值规则，但也先收敛）
+const ts = clampClientTs(req.clientUpdatedAt, now);
+```
+
+> 服务端"未来时间戳收敛"的语义在 Q9/签到里已经用过一次（`dayIndex(last) > dayIndex(now)`），这里是同一套思路的统一实现。
+
+### 6.8 迁移弹窗的昵称/头像可见性（PM Q2 必做项）
+
+**原则：绝不静默丢弃用户的本机昵称。**
+
+#### A. 摘要卡固定增加一行
+
+| 云端状态 | 渲染格式 | 示例 |
+| --- | --- | --- |
+| 云端是默认值 | 只显示生效值，**省略箭头** | `昵称　牌神` |
+| 云端已有自定义值 | `本机值 → 迁移后生效值` | `昵称　牌神 → 德州之王` |
+| 头像 | 同时渲染两个头像（32px），有覆盖时中间加 `→` | `🅐 → 🅑` |
+
+#### B. 真冲突时渲染内联二选一
+
+**真冲突判定**：`cloudProfile` 与 `localProfile` **均非默认值** 且 **不相等**。
+
+```ts
+const CLOUD_DEFAULT = { nickname: '新玩家', avatar: '/avatars/1.png' };
+const cloudIsDefault = c.nickname === CLOUD_DEFAULT.nickname && c.avatar === CLOUD_DEFAULT.avatar;
+const localIsDefault = l.nickname === CLOUD_DEFAULT.nickname && l.avatar === CLOUD_DEFAULT.avatar;
+const conflict = !cloudIsDefault && !localIsDefault &&
+                 (c.nickname !== l.nickname || c.avatar !== l.avatar);
+```
+
+冲突时渲染（选区行高 56px，选中项 `ring-1 ring-gold + bg-gold/10`）：
+
+```
+昵称归属（两者不一致，请选择）
+┌─────────────────────────────────┐
+│ ● 保留云端「德州之王」          │  ← 默认选中
+│   你昨天在另一台设备改过        │   11px ivory/40
+└─────────────────────────────────┘
+┌─────────────────────────────────┐
+│ ○ 改用本机「牌神」              │
+│   用这台设备上的昵称            │
+└─────────────────────────────────┘
+```
+
+- **默认选中「保留云端」**
+- 用户显式选择后，该选择**必须压过时间戳 LWW**（P1 加 `users.client_updated_at` 后尤其重要）→ migrate 请求带 `profileOverride` 字段
+- **仅在 `merge` 策略下渲染**；`overwrite` / `keep_cloud` 结果唯一确定，不渲染
+
+#### C. 接口变更
+
+```ts
+// src/types/cloud.ts
+export interface MigrateRequest {
+  strategy: MigrateStrategy;
+  snapshot: ProgressSnapshot;
+  profile: { nickname: string; avatar: string };
+  clientUpdatedAt: number;
+  /** 用户在真冲突开关里的显式选择；存在时压过一切 LWW 判定 */
+  profileOverride?: 'keep_cloud' | 'use_local';
+}
+```
+
+服务端优先级：`profileOverride` > 默认值判定规则（§6.5）> 时间戳 LWW（P1）。
+
+### 6.9 迁移弹窗挂起的三个硬化点（PM Q3）
+
+#### 硬化点 1：挂起时机提前到「拿到 auth 响应并判定需要迁移」的那一刻
+
+**不能等弹窗渲染**。因为 `Home.tsx` 的 `useEffect` 里有 `if (lastCheckin === 0) dailyCheckin()` 自动签到 —— 注册完 `navigate('/')` → Home 挂载 → 自动签到 → XP+50 豆+500 → 写入 → 3s 防抖 → 上报，会稳稳抢在弹窗前面。
+
+```ts
+// src/pages/Register.tsx / Login.tsx 的提交回调（顺序不可调换）
+const res = await api.register({ email, password, nickname });
+if (!res.ok) { /* 错误处理 */ return; }
+
+// ① 先抓本机快照（必须在 applyRemote 之前）
+const captured = { snapshot: readLocalSnapshot(),
+                   profile: { nickname: userStore.nickname, avatar: userStore.avatar } };
+authStore.captureLocal(captured);
+
+// ② 判定是否需要迁移（migratedAt 已在响应里，可同步判定）
+const needsMigrate = res.data.user.migratedAt === null &&
+                     hasNonZeroProgress(captured.snapshot);
+
+// ③ ★ 先挂起，再 applyRemote，再导航 —— 顺序不可调换
+if (needsMigrate) syncEngine.setSuspended(true);
+syncEngine.applyRemote(res.data.snapshot, res.data.revision);   // 内部 suppress，不会触发上报
+syncEngine.start(res.data.user.id);
+if (needsMigrate) {
+  authStore.openMigratePrompt({ email: res.data.user.email,
+                                localSnapshot: captured.snapshot,
+                                localProfile: captured.profile,
+                                cloudSnapshot: res.data.snapshot });
+}
+navigate('/', { replace: true });
+```
+
+> 挂起期间**本地写入照常**（`setSuspended` 只挡 `markDirty` 的网络上报分支，不挡 localStorage 写入），用户答题/打牌不受任何影响。
+
+#### 硬化点 2：迁移成功后，先重置快照，再释放挂起
+
+```ts
+// src/components/MigrateDialog.tsx —— onConfirm
+async function onConfirm() {
+  setBusy(true);
+  try {
+    const res = await api.migrate(buildRequest());
+    if (!res.ok) { setError(res.error.message); return; }        // 弹窗回到可选状态
+    // ★ 顺序不可调换：先 applyRemote（内部会把 base 重置为合并后快照），再释放挂起
+    syncEngine.applyRemote(res.data.snapshot, res.data.revision);
+    authStore.setAuthenticated(res.data.user);
+    toast.success('进度已上传云端');
+    close();
+  } catch (e) {
+    setError('迁移失败：网络异常，可稍后重试');
+  } finally {
+    setBusy(false);
+    // ★ finally 保证任何出口都释放挂起（见硬化点 3）
+  }
+}
+```
+
+> **验收重点**：只释放挂起而不重置 base，残留的 +2000 差值会在释放瞬间被再次上报，14000 的问题原样复现。
+
+#### 硬化点 3：五个出口全部释放挂起
+
+| 出口 | 行为 |
+| --- | --- |
+| 迁移成功 | `applyRemote` → 释放 |
+| 迁移失败 | 弹窗回到可选状态 → **释放** |
+| 「稍后再说」 | 见下方"稍后再说"的特殊处理 → 释放 |
+| ✕ 关闭 / 遮罩点击 | **等同于「稍后再说」**（同一 sessionStorage 标记 + 同一处理），不做第四种语义 |
+| 页面卸载 / 组件 unmount | effect cleanup 里兜底释放 |
+
+```ts
+// src/components/MigrateDialog.tsx
+useEffect(() => {
+  return () => { syncEngine.setSuspended(false); };   // unmount 兜底
+}, []);
+```
+
+#### ⚠️ 「稍后再说」必须 rebase，否则等于替用户做了 merge
+
+**问题**：挂起期间 base 仍是云端默认值（10000 豆）。若「稍后再说」只是简单释放挂起，delta = 12000 − 10000 = +2000 会被正常上报 → 云端变成 12000 → **用户还没选，merge 已经悄悄做完了**。后果：`keep_cloud` 选项在用户回来时已经失效（云端里已经混进了本机数据），而用户点的是"稍后再说"。
+
+**解法：rebase（把历史差额冻结出队）**
+
+```ts
+function onDismiss() {                    // 「稍后再说」/ ✕ / 遮罩 共用
+  sessionStorage.setItem('pm_migrate_dismissed', '1');
+  // ★ 把 base 抬到当前本地快照，历史差额（+2000）被冻结出同步队列
+  syncEngine.setBase(readLocalSnapshot(), syncEngine.getBaseRevision());
+  authStore.closeMigratePrompt();
+  syncEngine.setSuspended(false);
+  // 此后：未来增量正常同步，migrated_at 仍为 null，Profile 的迁移入口保留
+}
+```
+
+**配套规则：migrate 的 snapshot 必须是冻结值**
+
+| 策略 | snapshot 来源 | 理由 |
+| --- | --- | --- |
+| `merge` | **冻结的 `capturedLocal.snapshot`** | delta = 冻结值 − `ZERO_BASELINE`，固定不变。若改用执行时的实时值，会与 rebase 后已正常上报的增量重复计算 |
+| `overwrite` | **执行时的实时 `readLocalSnapshot()`** | 云端 := 本机最新全量，用冻结值会丢掉弹窗期间打的牌 |
+| `keep_cloud` | 不需要 | 云端不动 |
+
+> 摘要卡展示的也应是**冻结值**（`capturedLocal.snapshot`），因为它才是真正会被迁移的数字 —— 更诚实。
+
+### 6.10 「立即同步」失败矩阵（PM Q4）
+
+```ts
+// src/lib/syncEngine.ts
+async function manualSync(): Promise<{ ok: boolean; error?: string }> {
+  const pushed = await push();                       // ① 先把本地增量推上去
+  if (!pushed) {                                     // push 失败 → 禁止 pull
+    useAuthStore.getState().setSyncStatus('offline');
+    return { ok: false, error: '网络不可用，已保留本地进度' };
+  }
+  const pulled = await api.syncPull();               // ② 再拉云端覆盖本地
+  if (!pulled.ok) {                                  // push 成功但 pull 失败
+    useAuthStore.getState().setSyncStatus('uploaded');   // 云端已收到，本地待刷新
+    return { ok: false, error: '已上传，将在下次自动刷新' };
+  }
+  applyRemote(pulled.data.snapshot, pulled.data.revision);
+  useAuthStore.getState().setSyncStatus('idle');
+  useAuthStore.getState().markSynced(0);
+  return { ok: true };
+}
+```
+
+| 情形 | 行为 | Toast |
+| --- | --- | --- |
+| push 成功 + pull 成功 | 转「已同步」，更新快照与最后同步时间 | `success` 同步完成 |
+| **push 失败** | **禁止 pull**，本地数据不动，转「离线（N 条待同步）」 | `error` 网络不可用，已保留本地进度 |
+| push 成功 + pull 失败 | 云端已收到增量（不丢），本地不动，转「已上传 · 待刷新」，下次自动重试 pull | `warning` 已上传，将在下次自动刷新 |
+
+> **push 失败还去 pull 就是数据丢失** —— 这条是硬约束。
+
+**同步态由 4 态扩展为 5 态**（PRD §6.3 定义了 4 态，新增 `uploaded`）：
+
+| 状态 | 圆点 | 文案 | 右侧操作 |
+| --- | --- | --- | --- |
+| 已同步 `idle` | 🟢 `#43A047` | 已同步 · 上次同步：X 分钟前 | 立即同步 |
+| 同步中 `syncing` | 🟡 `#D4A857`（脉冲） | 同步中… | 禁用 |
+| **已上传 `uploaded`** | 🟡 `#E8C273`（**非脉冲**） | 已上传 · 待刷新 | 重试 |
+| 离线 `offline` | ⚪ `#8A8A8A` | 离线 · N 条待同步 | 立即同步（点击重试） |
+| 不可用 `unavailable` | 🔴 `#E53935` | 云端不可用（本地模式） | 隐藏 |
+
+```ts
+export type SyncStatus = 'idle' | 'syncing' | 'uploaded' | 'offline' | 'unavailable';
+```
+
+### 6.11 「退出登录 → 重新登录」= 官方恢复路径（PM Q5）
+
+当本机数据被搞乱、用户想强制以云端为准时的**官方解法**，写进 FAQ / 帮助文案供客服使用：
+
+> 「个人中心 → 退出登录 → 重新登录」会清空本机的同步基准，重新登录时从云端全量拉取并覆盖本机，等价于「强制以云端为准」。
+> ⚠️ 此操作**不会**删除本机游戏数据（AUTH-06 / US-08），但重新登录的瞬间本机未同步的增量会被云端值覆盖。
+
+实现上依赖两件事，均已在设计中：
+1. `syncEngine.stop()` 清 `pm_sync_base_v1`；
+2. 重新登录走 `applyRemote(res.snapshot, res.revision)` 全量覆盖三源。
+
+### 6.12 前后端统一 UTC+8（PM Q8，已批准执行）
+
+改动细节见 §12 的 Q8-续。要点：
+
+```ts
+// shared/constants.ts —— 唯一定义，前后端共用
+export const TZ_OFFSET_MS = 8 * 3_600_000;
+export const dayIndex = (ts: number) => Math.floor((ts + TZ_OFFSET_MS) / 86_400_000);
+export const dayStartUtc8 = (ts: number) => dayIndex(ts) * 86_400_000 - TZ_OFFSET_MS;
+```
+
+```ts
+// src/store/userStore.ts（内部私有函数，导出签名零变化）
+function isSameDay(a: number, b: number) { return dayIndex(a) === dayIndex(b); }
+function isConsecutiveDay(prev: number, curr: number) { return dayIndex(curr) - dayIndex(prev) === 1; }
+```
+
+```diff
+// src/pages/Home.tsx:52
+- const today = new Date().setHours(0, 0, 0, 0);
+- const checkedToday = lastCheckin >= today;
++ const todayStart = dayStartUtc8(Date.now());
++ const checkedToday = lastCheckin >= todayStart;
+```
+
+```ts
+// server/merge.ts —— 复用同一个 dayIndex，消除两端漂移
+import { dayIndex } from '../../shared/constants';
+```
+
+> **副作用（正向）**：根治 F16 的 DST bug —— 夏令时切换日当天 `isConsecutiveDay` 会因为 23h/25h 而误判中断，UTC+8 无夏令时，改用 `dayIndex()` 后消失。
+
 ---
 
 ## 7. 服务端路由设计（裸 `node:http`）
@@ -1705,7 +2142,23 @@ npm i bcryptjs@^3.0.3
 
 ## 9. 任务列表（有序 · 依赖明确 · 可直接执行）
 
-> 共 **5 个任务**，每个任务内含子项。依赖方向：T01 → T02 → T03 → T04 → T05（T02 与 T03 在 T01 完成后可并行推进）。
+> 共 **5 个任务 / 45 个子项**（T01×13、T02×8、T03×12、T04×6、T05×6）。依赖方向：T01 → T02 → T03 → T04 → T05（T02 与 T03 在 T01 完成后可并行推进）。
+
+**本轮（PRD v1.1 反馈）共 9 处改动已全部落位：5 个新增子项 + 4 个既有子项扩展。**
+
+| 子项 | 来源 | 类型 | 归属 |
+| --- | --- | --- | --- |
+| T01.13 UTC+8 三处同改（`constants` + `userStore`×2 私有函数 + `Home.tsx`） | PM Q8 | 新增 | T01 |
+| T02.3 追加 `clampClientTs()` 时钟偏差防护 | PM Q1 约束① | 扩展 | T02 |
+| T02.6 `migrate` 支持 `profileOverride` | PM Q2 | 新增 | T02 |
+| T02.7 `POST /api/sync/checkin` 501 占位（P1 SYNC-12 契约） | PM Q9 | 新增 | T02 |
+| T03.11 `manualSync()` 失败矩阵 + 第 5 态 `uploaded` | PM Q4 | 新增 | T03 |
+| T03.12 挂起能力前置（`setSuspended` 幂等、可在 `start()` 前调用） | PM Q3 | 新增 | T03 |
+| T05.2 迁移弹窗昵称/头像归属行 + 真冲突二选一 | PM Q2 | 扩展 | T05 |
+| T05.3 挂起三硬化点（时机提前 / 成功后 rebase / 全路径释放 + 稍后再说 rebase） | PM Q3 | 新增 | T05 |
+| T05.4 追加「退出登录→重新登录」恢复路径文案 | PM Q5 | 扩展 | T05 |
+
+> **寇豆码开工顺序建议**：T01 全量（含 T01.13）→ T02 与 T03 并行 → T04 → T05。T01.13 是 3 处同改，**不要拆成两次提交**。
 
 ---
 
@@ -1727,8 +2180,9 @@ npm i bcryptjs@^3.0.3
 | T01.10 | `server/standalone-entry.ts` | `createServer` 回调首行加 `if (await handleApi(req, res)) return;`（**其余逻辑一字不动**） | `npm run build && npm run build:server && node dist-server/server.mjs` → `curl localhost:7100/api/health` 正常，静态页面正常 |
 | T01.11 | `.env.example` + `.gitignore` + `render.yaml` | 按 §11 写 | `.gitignore` 含 `.env*` 与 `!.env.example`；`render.yaml` 含 3 个 env + `healthCheckPath: /api/health` |
 | T01.12 | `tsconfig.node.json` | `include` 追加 `"server"`、`"shared"` | `npm run typecheck` 通过（含 server 目录） |
+| **T01.13** | `shared/constants.ts` + `src/store/userStore.ts`（M13）+ `src/pages/Home.tsx`（M14） | **PM Q8 · UTC+8 统一，三个改动点必须同批提交**：① constants 追加 `TZ_OFFSET_MS = 8*3600_000`、`dayIndex(ts)`、`dayStartUtc8(ts)`、`CLOCK_SKEW_TOLERANCE_MS = 300_000`；② `userStore.ts:55` `isSameDay` → `return dayIndex(a) === dayIndex(b)`；`:61` `isConsecutiveDay` → `return dayIndex(curr) - dayIndex(prev) === 1`；③ `Home.tsx:52` `new Date().setHours(0,0,0,0)` → `dayStartUtc8(Date.now())` | ① `git diff src/store/userStore.ts` **只有这 2 行函数体**，导出签名零变化；② 手动把系统时间调到 DST 切换日（如 2026-03-08 美国）前后各签到一次，`consecutiveLoginDays` 能到 2（旧代码此处必断）；③ Home 的「已签到」按钮与 `dailyCheckin()` 判定**永远一致**（改其一不改其二则此项必然失败，故三点同批） |
 
-**T01 完成判据**：本地不配 Supabase 也能 `npm run dev` 打开页面并玩德州；`curl /api/health` 返回 `cloud:false`。
+**T01 完成判据**：本地不配 Supabase 也能 `npm run dev` 打开页面并玩德州；`curl /api/health` 返回 `cloud:false`；T01.13 的三处改动已合并，签到按钮状态无矛盾。
 
 ---
 
@@ -1740,12 +2194,14 @@ npm i bcryptjs@^3.0.3
 | --- | --- | --- | --- |
 | T02.1 | `server/supabase.ts` | `sbGet` / `sbInsert` / `sbPatch`（Prefer return=representation）/ 23505→EMAIL_TAKEN 映射 / 8s AbortController | 单测：故意插重复邮箱 → 抛 `EMAIL_TAKEN` |
 | T02.2 | `server/session.ts` | `sign` / `verifyToken`（timingSafeEqual + 长度预检 + exp 校验）/ `readCookie` / `writeCookie` / `clearCookie`（按 §7.3） | 单测：篡改 1 个字符 → verifyToken 返回 null；过期令牌 → null |
-| T02.3 | `server/merge.ts` | `mergeProgress` / `mergeCheckin` / `mergePerCategory` / `clampInt`（按 §6.5） | 单测 6 条：ACCUM 累加、PEAK 取 max、perCategory 逐 key、签到 max、LWW 新者胜、clamp（handsWon>handsPlayed 被收敛） |
+| T02.3 | `server/merge.ts` | `mergeProgress` / `mergeCheckin` / `mergePerCategory` / `clampInt`（按 §6.5）**+ `clampClientTs()`（按 §6.7，P0 必做）** | 单测 **8** 条：ACCUM 累加、PEAK 取 max、perCategory 逐 key、签到 max、LWW 新者胜、clamp（handsWon>handsPlayed 被收敛）、**时钟偏差：clientTs = now+10min → 被夹到 now**、**clientTs = 0 / NaN / 负数 → 回落到 now** |
 | T02.4 | `server/authRoutes.ts` | `register`（trim+lowercase → 服务端二次校验 → bcrypt.hash(10) → 插 users+user_progress → 签 cookie）、`login`（查 users → bcrypt.compare → 统一 401 文案）、`logout`、`me`、`updateProfile`（昵称≤12、头像 ≤128KB 校验）、`resetRequest`/`resetConfirm`（501 NOT_IMPLEMENTED） | `curl` 全链路跑通；注册成功响应体**不含** `password_hash`；重复注册返回 409 EMAIL_TAKEN；错密码与不存在邮箱返回**同一文案** |
-| T02.5 | `server/syncRoutes.ts` | `push`（读 row → revision 不匹配直接 409 → mergeProgress → CAS PATCH → 空数组再读一次返回 409）、`pull`、`migrate`（三策略 + `migrated_at` 幂等） | ① 用两个终端并发 push 同一账号，双方增量都不丢；② push 时服务端日志无任何明文密码 |
-| T02.6 | `server/api.ts` | 把 T02.4/T02.5 的 handler 注册进 `ROUTES` 与 `NEED_AUTH` | 未带 cookie 调 `/api/sync/pull` → 401 UNAUTHORIZED |
+| T02.5 | `server/syncRoutes.ts` | `push`（读 row → revision 不匹配直接 409 → **`clampClientTs(req.clientUpdatedAt)`** → mergeProgress → CAS PATCH → 空数组再读一次返回 409）、`pull`、`migrate`（三策略 + `migrated_at` 幂等） | ① 用两个终端并发 push 同一账号，双方增量都不丢；② push 时服务端日志无任何明文密码；③ 故意传 `clientUpdatedAt = Date.now()+600000` → 落库的 `client_updated_at` 不超过服务端 now |
+| **T02.6** | `server/syncRoutes.ts` | **PM Q2 · `migrate` 支持 `profileOverride?: 'keep_cloud' \| 'use_local'`**。语义：**一旦传入，它必须覆盖 merge 策略里的所有 LWW 判定**（昵称/头像直接取 override 指定一方），优先级高于 `client_updated_at` 比较。不传则回落到现有 LWW | 三条 curl：`strategy:'merge'` 且 `profileOverride:'use_local'` → 返回快照的 nickname 等于本机值；`profileOverride:'keep_cloud'` → 等于云端值；不传 → 按 `client_updated_at` 较新者 |
+| **T02.7** | `server/syncRoutes.ts` | **PM Q9 · P1 契约占位**：`POST /api/sync/checkin` 返回 `501 NOT_IMPLEMENTED`（响应体按 §7.4 统一格式）。P0 前端**不调用**它 | `curl -X POST /api/sync/checkin` → 501 + `{ok:false,error:{code:'NOT_IMPLEMENTED'}}`。**不要**在 P0 实现服务端裁决 |
+| T02.8 | `server/api.ts` | 把 T02.4/T02.5/T02.7 的 handler 注册进 `ROUTES` 与 `NEED_AUTH` | 未带 cookie 调 `/api/sync/pull` → 401 UNAUTHORIZED |
 
-**T02 完成判据**：纯 `curl` 能完成「注册 → me → push → 换 revision push → 409 → pull → migrate → logout」全链路。
+**T02 完成判据**：纯 `curl` 能完成「注册 → me → push → 换 revision push → 409 → pull → migrate → logout」全链路；`clampClientTs` 与 `profileOverride` 两处单测通过。
 
 ---
 
@@ -1760,13 +2216,15 @@ npm i bcryptjs@^3.0.3
 | T03.3 | `src/store/points.ts` | 加 `__onWrite` 注册函数 + `saveProfileRaw`（不触发通知）+ `saveProfile` 内加 1 行 `notifyWrite()` | `git diff src/store/points.ts` 只有新增，无任何删除/改名；`loadProfile/saveProfile/claimRelief/defaultProfile` 签名逐字符不变 |
 | T03.4 | `src/store/drillStats.ts` | 同上：加 `__onWrite` + `writeDrillStatsRaw` + `recordAnswer` 内加 1 行 `notifyWrite()` | `git diff` 只有新增；`recordAnswer` 返回值与 statistics 逻辑不变 |
 | T03.5 | `src/store/localSnapshot.ts` | `readLocalSnapshot` / `writeLocalSnapshot` / `hasNonZeroProgress`（按 §6.6） | 手工改 localStorage 后读到的快照与三源一致 |
-| T03.6 | `src/lib/syncEngine.ts` | `start/stop/setSuspended/markDirty/flush/manualSync/applyRemote/setBase/computeDelta/pendingCount` + 防抖 + visibility/pagehide + **409 applyConflict（按 §6.4 的正确姿势）** + base 持久化到 `pm_sync_base_v1` | ① 连续答题 5 次只发 1 次 push；② 切后台立即 flush；③ 模拟 409 → 重试后云端值 = 初始 + A增量 + B增量（不丢） |
+| T03.6 | `src/lib/syncEngine.ts` | `start/stop/setSuspended/markDirty/flush/applyRemote/setBase/computeDelta/pendingCount` + 防抖 + visibility/pagehide + **409 applyConflict（按 §6.4「换基准、留增量」的正确姿势）** + base 持久化到 `pm_sync_base_v1` | ① 连续答题 5 次只发 1 次 push；② 切后台立即 flush；③ 模拟 409 → 重试后云端值 = 初始 + A增量 + B增量（不丢）；④ `setBase()` 必须可被外部调用（T05.3「稍后再说」rebase 依赖它） |
 | T03.7 | `src/components/common/Spinner.tsx` | 金色旋转指示器 | 视觉走查通过 |
 | T03.8 | `src/components/common/Input.tsx` | 48px 暗金输入框，支持 `error` / `rightSlot` / `autoComplete` / 聚焦 `scrollIntoView({block:'center'})` | iPhone SE 375px 下聚焦不被键盘遮挡 |
 | T03.9 | `src/components/common/Button.tsx` | 追加可选 `loading?: boolean` | 现有 12 处调用点无一需要改动 |
 | T03.10 | `src/components/common/Modal.tsx` | 追加可选 `dismissible?: boolean = true` | 现有 8 处调用点行为不变 |
+| **T03.11** | `src/lib/syncEngine.ts` + `src/store/authStore.ts` | **PM Q4 · `manualSync()` 失败矩阵 + 第 5 态 `uploaded`**：按 §6.10 严格实现「**先 push 后 pull，push 失败禁止 pull**」；`SyncStatus` 由 4 态扩为 5 态 `'idle' \| 'syncing' \| 'uploaded' \| 'offline' \| 'unavailable'` | ① 断网点点「立即同步」→ 本地数据**一条不少**（前后 `xp`/`points` 数值相同）+ toast「网络不可用，已保留本地进度」；② 拦截 pull 使其失败、push 成功 → 状态变「已上传 · 待刷新」且**云端值已 +delta**；③ 状态机切换无中间闪烁 |
+| **T03.12** | `src/lib/syncEngine.ts` | **PM Q3 · 挂起能力前置落地**：`setSuspended(true/false)` 必须是**幂等**的、可在 `start()` 之前调用（此时只置标志、不发请求）；挂起期间 `flush()` 直接 return、防抖定时器清零 | 登录态下先 `setSuspended(true)` 再玩一局 → Network 面板**无**任何 `/api/sync/push`；`setSuspended(false)` 后立即补发 1 次且不重复累加 |
 
-**T03 完成判据**：登录后在 Drills 页答题，Network 面板 3s 后可见 1 条 `POST /api/sync/push` 且服务端 `drill_answered` 正确 +1。
+**T03 完成判据**：登录后在 Drills 页答题，Network 面板 3s 后可见 1 条 `POST /api/sync/push` 且服务端 `drill_answered` 正确 +1；Q3 挂起与 Q4 失败矩阵两条单测通过。
 
 ---
 
@@ -1793,13 +2251,14 @@ npm i bcryptjs@^3.0.3
 
 | 子项 | 文件 | 做什么 | 验收标准 |
 | --- | --- | --- | --- |
-| T05.1 | `src/components/CloudSyncCard.tsx` | UI-03 四态卡：已同步🟡绿 / 同步中🟡黄脉冲 / 离线⚪灰（N 条待同步）/ 不可用🔴红；邮箱脱敏（`p****r@mail.com`）；上次同步时间；「立即同步」按钮（**先 push 再 pull**） | 断网时显示「N 条待同步」；点立即同步有 loading 与结果 toast |
-| T05.2 | `src/components/MigrateDialog.tsx` | UI-05：本机摘要（XP/欢乐豆/答题·正确率/连续签到）+ 三策略 RadioGroup（默认合并）+ 云端现有数据提示 + 二次确认 + 执行中禁止关闭 + 失败重试 + 「稍后再说」（sessionStorage） | 三策略结果分别符合 PRD §4.1；迁移只成功执行一次 |
-| T05.3 | `src/pages/Profile.tsx` | ① 段位卡与战绩卡之间插入 `<CloudSyncCard/>`；② 账号区三分支（已登录 / 游客+cloudEnabled / cloudEnabled=false）；③ `saveName` 兼容 `activeId===null`（`activeId ? updateAccount(...) : setNickname(...)`）；④ 挂 `MigrateDialog` 入口「把本机进度导入云端」；⑤ 编辑资料保存后调 `PUT /api/profile` | 登录态不显示「切换本机账号」；`cloudEnabled=false` 时账号区为灰色禁用态 |
-| T05.4 | 联调与验收 | 跑 §10 的验收清单 | 全部通过 |
-| T05.5 | 密钥与回归 | `npm run check:secrets`；5 条玩法链路冒烟 | `dist/assets/*.js` grep `service_role`/`SERVICE_ROLE`/`SESSION_SECRET` = 0 命中；德州/21点/专项训练/好友房/掼蛋 5 条链路 100% 通过 |
+| T05.1 | `src/components/CloudSyncCard.tsx` | UI-03 **五态卡**（按 §6.10）：已同步🟢 / 同步中🟡脉冲 / **已上传·待刷新🟡非脉冲** / 离线⚪（N 条待同步）/ 不可用🔴；邮箱脱敏（`p****r@mail.com`）；上次同步时间；「立即同步」按钮（**先 push 再 pull**） | 断网时显示「N 条待同步」；点立即同步有 loading 与结果 toast；`uploaded` 态与 `syncing` 态视觉可区分（脉冲 vs 静态） |
+| **T05.2** | `src/components/MigrateDialog.tsx` | UI-05 **+ PM Q2 昵称/头像可见性（必做）**：本机摘要（XP/欢乐豆/答题·正确率/连续签到）**必须**追加一行归属说明，格式「本机值 → 迁移后生效值」（云端为默认值时省略箭头只显示「牌神」；真冲突时显示「牌神 → 德州之王」）；**真冲突**（双方均非默认且不等）时渲染内联二选一开关，默认选中「保留云端」；`overwrite` / `keep_cloud` 策略下**不渲染**此开关（结果确定）。另含三策略 RadioGroup（默认合并）+ 云端现有数据提示 + 二次确认 + 执行中禁止关闭 + 失败重试 + 「稍后再说」（sessionStorage） | ① 三种云端昵称状态（默认 / 自定义 / 与本机真冲突）下归属行文案均正确；② 选「改用本机」后 `POST /api/sync/migrate` 请求体带 `profileOverride:'use_local'`，返回快照 nickname = 本机值；③ 三策略结果分别符合 PRD §4.1；④ 迁移只成功执行一次 |
+| **T05.3** | `src/pages/Register.tsx`、`src/pages/Login.tsx`、`src/components/MigrateDialog.tsx` | **PM Q3 · 挂起三个硬化点**：① 挂起时机**提前到「拿到 register/login 响应、判定需要迁移」的那一刻**，不等弹窗渲染（否则 `Home.tsx` 的 `useEffect` 自动签到会抢跑）；② 迁移成功后**先把 `lastSyncedSnapshot` 重置为服务端返回的合并快照，再释放挂起**（`setBase(snapshot, revision)`）—— 这是本任务的关键验收点，漏了会在释放瞬间把残留的 +2000 再推一遍，14000 问题复现；③ 挂起必须在**每一条退出路径**上释放（成功/失败/稍后再说/✕ 关闭/遮罩点击/页面卸载），用 `try/finally` 或 effect cleanup。✕ 关闭与遮罩点击**等同「稍后再说」**（同一个 sessionStorage 标志 + 释放挂起），不存在第四种语义。"稍后再说" 释放挂起前必须 **rebase**：`syncEngine.setBase(readLocalSnapshot(), base.revision)`，否则冻结期产生的增量会在释放瞬间被静默推上去。合并策略用**冻结的** `capturedLocal.snapshot`，`overwrite` 策略用**实时的** `readLocalSnapshot()` | ① 注册后停留在迁移弹窗 5 分钟不动 → 服务端 `xp` 数值**完全不变**（旧实现会 +2000）；② 迁移成功瞬间再抓包，**无**额外的 push 请求；③ 点 ✕ / 遮罩 / 稍后再说后 30 分钟内，服务端 `xp` 不发生变化；④ 弹窗期间进 Home，签到按钮不触发自动签到 |
+| **T05.4** | `src/pages/Profile.tsx` | ① 段位卡与战绩卡之间插入 `<CloudSyncCard/>`；② 账号区三分支（已登录 / 游客+cloudEnabled / cloudEnabled=false）；③ `saveName` 兼容 `activeId===null`（`activeId ? updateAccount(...) : setNickname(...)`）；④ 挂 `MigrateDialog` 入口「把本机进度导入云端」；⑤ 编辑资料保存后调 `PUT /api/profile`；⑥ **PM Q5 · 已登录区块底部加一行灰色小字**：「进度对不上？退出登录后重新登录即可强制以云端为准」（FAQ 恢复路径，客服可直接引用，文案见 §6.11） | 登录态不显示「切换本机账号」；`cloudEnabled=false` 时账号区为灰色禁用态；恢复路径文案可见且不误导（不谎称会删本地数据） |
+| T05.5 | 联调与验收 | 跑 §10 的验收清单 | 全部通过 |
+| T05.6 | 密钥与回归 | `npm run check:secrets`；5 条玩法链路冒烟 | `dist/assets/*.js` grep `service_role`/`SERVICE_ROLE`/`SESSION_SECRET` = 0 命中；德州/21点/专项训练/好友房/掼蛋 5 条链路 100% 通过 |
 
-**T05 完成判据**：US-01 ~ US-09 全部验收通过，`npm run build && npm run build:server` 与 `npm run check:secrets` 全绿。
+**T05 完成判据**：US-01 ~ US-09 全部验收通过，`npm run build && npm run build:server` 与 `npm run check:secrets` 全绿；Q2 可见性、Q3 三个硬化点、Q4 五态卡、Q5 恢复路径文案四项逐条走查通过。
 
 ---
 
@@ -1807,11 +2266,11 @@ npm i bcryptjs@^3.0.3
 
 ```mermaid
 graph TD
-    T01["T01 基础设施与骨架<br/>schema.sql / 依赖 / shared / api.ts 路由 / dev 中间件<br/>P0 · 无依赖"]
-    T02["T02 服务端认证与进度<br/>supabase / session / merge / authRoutes / syncRoutes<br/>P0"]
-    T03["T03 前端基础层<br/>api / authStore / localSnapshot / syncEngine / Input·Spinner<br/>P0"]
-    T04["T04 认证 UI<br/>Register / Login / AccountGate / App / bootstrap / GuestBanner<br/>P0"]
-    T05["T05 个人中心与迁移<br/>CloudSyncCard / MigrateDialog / Profile / 联调验收<br/>P0"]
+    T01["T01 基础设施与骨架<br/>schema.sql / 依赖 / shared / api.ts 路由 / dev 中间件<br/>T01.13 = PM Q8 的 UTC+8 三处同改<br/>P0 · 无依赖"]
+    T02["T02 服务端认证与进度<br/>supabase / session / merge / authRoutes / syncRoutes<br/>T02.3 = PM Q1① clampClientTs<br/>T02.6 = PM Q2 profileOverride<br/>T02.7 = PM Q9 P1 契约占位 501"]
+    T03["T03 前端基础层<br/>api / authStore / localSnapshot / syncEngine / Input·Spinner<br/>T03.11 = PM Q4 失败矩阵 + 第 5 态<br/>T03.12 = PM Q3 挂起能力"]
+    T04["T04 认证 UI<br/>Register / Login / AccountGate / App / bootstrap / GuestBanner"]
+    T05["T05 个人中心与迁移<br/>T05.2 = PM Q2 昵称/头像可见性<br/>T05.3 = PM Q3 挂起三硬化 + rebase<br/>T05.4 = PM Q5 恢复路径文案<br/>+ CloudSyncCard / Profile / 联调验收"]
 
     T01 --> T02
     T01 --> T03
@@ -2007,24 +2466,109 @@ curl -s -b $C -X POST $B/auth/logout
 
 ---
 
-## 12. 待明确事项 / PRD 缺口
+## 12. 待明确事项 / PRD 缺口（**已与 PM 对齐，PRD v1.1 为准**）
 
-| # | 问题 | 我的处置（已写入设计，如 PM 有异议请回退） |
+> 状态说明：PM 许清楚已就全部 10 条回复（PRD 升 v1.1）。下表为**最终结论**，工程师按此执行。
+
+| # | 问题 | 最终结论 | 状态 |
+| --- | --- | --- | --- |
+| Q1 | `drill_streak` 的 LWW 缺少 `updated_at` 载体 | **新增 `user_progress.client_updated_at`**（已落 DDL）。PM 追加两个约束：① 时钟偏差防护（见 §6.7）；② `users` 表同类列 → **评估 35–40 min > PM 给的 15 min 阈值，降级 P1**（理由见下方 Q1-续） | ✅ P0 部分 + ⏳ P1 部分 |
+| Q2 | 迁移时昵称/头像的 LWW 依据缺失 | 默认值判定规则**批准**。PM 追加**必做**的 UI 可见性（见 §6.8）：摘要卡固定增加「昵称/头像」归属行 + 真冲突时内联二选一开关 | ✅ 含新增 UI |
+| Q3 | 迁移弹窗期间防抖上报双重累加 | **批准**，且 PM 指出比预估更严重（会让 `keep_cloud` 失效）。追加 3 个硬化点（见 §6.9） | ✅ 已硬化 |
+| Q4 | 「立即同步」语义 | **批准** push→pull。PM 补了失败矩阵（见 §6.10），新增第 5 个同步态 `uploaded` | ✅ |
+| Q5 | 是否需要强制云端覆盖本机 | 不做。PM 补充：**「退出登录→重新登录」登记为官方恢复路径**（见 §6.11） | ✅ |
+| Q6 | P1 限流实效 | best-effort，接受 | ✅ |
+| Q7 | 好友房昵称 | P0 不动 `FriendRoom.tsx`。**但 PM v1.1 的"自动生效"结论有误，已更正**（见下方 Q7-续） | ✅ ⚠️ 需更正 |
+| Q8 | 签到时区 | **PM 要求回退成"前后端统一 UTC+8"，我评估后同意执行**（见下方 Q8-续 + §6.12） | ✅ 改方案 |
+| Q9 | 签到奖励可被重复领取 | **PM 指出我的推演有洞**（max 只保护状态字段，不保护 XP/豆）。裁决：**P0 接受缺口**，新增 **P1 SYNC-12** 收口 | ⚠️ 已知问题 + P1 |
+| Q10 | `users` 表名冲突 | 用 `public.users` | ✅ |
+
+### Q1-续：`users.client_updated_at` 降 P1 的理由
+
+PM 担心「离线 3 天的设备重连 → 用过期的昵称覆盖昨天刚改的」。**P0 架构下这个 bug 不成立**，因为昵称/头像有三重结构性保护：
+
+1. 昵称/头像**不在**防抖 push 的 payload 里（走独立的 `PUT /api/profile`）；
+2. 只在用户**主动编辑**时才会 push —— 那是明确意图，到达顺序 LWW 就是正确语义；
+3. `register/login/me` 时客户端**采纳云端**昵称/头像（`captureLocal` 先把本机值存下来供迁移弹窗用）。
+
+所以 P0 缺这列不会丢数据。**但时钟偏差防护（约束①）是免费且必要的，P0 必做。**
+
+| 项 | P0 | P1 |
 | --- | --- | --- |
-| Q1 | **`drill_streak` 的 LWW 缺少 `updated_at` 载体**：PRD §5.2 说按 `updated_at` 较新者胜，但 `user_progress.updated_at` 是服务端时间，每次 push 都会刷新，无法表达"客户端最后改动的时刻" | **新增列 `client_updated_at timestamptz`**（见 `schema.sql`），仅在客户端确实提交了 `lww` 时才更新。这是对 PRD §5.2 字段清单的**唯一新增列** |
-| Q2 | **迁移时昵称/头像的 LWW 依据缺失**：本机 `Account` 没有 `updated_at`，PRD §4.1 说"覆盖型字段以 `updated_at` 较新者胜"无法执行 | 采用**默认值判定**：`merge` 策略下仅当云端仍是默认值（`nickname==='新玩家'` / `avatar==='/avatars/1.png'`）才采纳本机值；`overwrite` 策略直接采用本机值；`keep_cloud` 保持云端。该规则已写入 §6.5 |
-| Q3 | **迁移弹窗期间防抖上报会与迁移双重累加**：注册成功后 `applyRemote` 已把 base 设为云端默认值，此时本机 12000 豆 vs 云端 10000 豆 → delta +2000，3s 后自动上报；用户再点「合并到云端」又累加 +2000 | 弹窗打开时 `syncEngine.setSuspended(true)` 挂起自动上报，弹窗关闭/完成后恢复。已在 §5.1/§5.5 时序图标注 |
-| Q4 | **「立即同步」的语义**：PRD 只写"全量拉取云端快照并写入本地"，但这会丢弃本地未同步增量 | 定义为 **先 push（把本地增量推上去）再 pull（拉云端覆盖本地）**，见 §3.4 `manualSync()` |
-| Q5 | **P0 是否需要 `/api/sync/pull` 之外的强制覆盖能力**：如用户想把云端数据强行拉到本机 | P0 不做。`manualSync` 的「先 push 后 pull」已覆盖 99% 场景 |
-| Q6 | **P1 限流在 Render 免费层的实际效果**：进程内 Map，重启即失效，且多实例时不共享 | 接受 PRD 的 best-effort 定调，P1 实现；日志中记录以便后续评估 |
-| Q7 | **好友房昵称**：PRD §0.2 提到"云端昵称优先，游客回落本地昵称"，但好友房页面不在本次范围 | P0 **不动** `FriendRoom.tsx`（降低 G3 零破坏风险）。列为 P1 独立小改动 |
-| Q8 | **签到时区**：PRD 未定义"天"的时区 | 服务端统一按 **UTC+8**（`TZ_OFFSET = 8*3600_000`）。前端 `isSameDay` 用的是浏览器本地时区，两端在中国大陆场景下一致；海外用户可能出现 1 天的边界差异，P0 接受 |
-| Q9 | **`consecutive_login_days` 的防作弊上界**：PRD 要求"杜绝改系统时间重复领取" | 采用「双端取 max」+ 「未来时间戳收敛到 now」+ 「上界 3650」三层防护。max 本身已具备幂等性（见 §6.5 推演），改系统时间的极端场景不在 P0 防御范围 |
-| Q10 | **`users` 表名与 Supabase 内置的 `auth.users` 同名风险** | 明确使用 `public.users`（带 schema 前缀）。PostgREST 默认暴露 `public` schema，`/rest/v1/users` 指向 `public.users`，与 `auth.users` 不冲突 |
+| `user_progress.client_updated_at` 列 | ✅ 已有 | — |
+| 共享时钟偏差防护 `clampClientTs()`（§6.7） | ✅ 必做（~10 min） | — |
+| `users.client_updated_at` 列 + `/api/profile` LWW + migrate LWW | — | ⏳ ~35–40 min |
+
+> 若 T02 有余量可顺手做掉；不做不影响 P0 正确性。
+
+### Q7-续：更正 PM v1.1 的一处事实
+
+PM 说「SYNC-01 拉取后写进 userStore，FriendRoom 读 userStore 就自动拿到云端昵称」——**不成立**。
+`FriendRoom.tsx:35` 用的是 `localStorage.getItem('poker-trainer-nickname')`，与 `userStore.nickname` 是**两套独立数据**（只有 `avatar` 在 446 行读了 `useUserStore.getState().avatar`）。
+
+- **决策不变**：P0 仍不碰 `FriendRoom.tsx`（G3 优先）。
+- **但 P1 要修的话，正确做法是**：登录/改昵称时，若 `poker-trainer-nickname` 为空则用它播种（`localStorage.setItem('poker-trainer-nickname', user.nickname)`）。**只在为空时播种**，不要无条件覆盖——好友房昵称是用户可能刻意另起的名字。
+
+### Q8-续：时区统一 UTC+8 —— 评估结论：**可控，执行**
+
+**先更正 PM 的风险场景**：PM 担心「前端判可签到 → 发奖励 → 服务端按 UTC+8 判已签 → XP 和豆实际没加 → 用户看到假成功」。
+**在我的设计里这不会发生**：`mergeProgress` 对 `xp`/`points` 是**无条件累加**（`cloud = cloud + delta`），与 `mergeCheckin` 的日期判定**完全解耦**。服务端从不按日期否决奖励。所以奖励一定会到账，不存在"假成功"。
+
+**但我仍然同意统一 UTC+8**，三个理由：
+
+1. **P1 SYNC-12 落地时，这个不一致会变成真的假成功** —— 服务端一旦开始按 UTC+8 裁决签到（SYNC-12 的核心），前端却用本地时区判定，PM 描述的 bug 就成真了。现在统一 = 不留迁移债。
+2. **顺带修掉一个既有 DST bug**（F16）：`isConsecutiveDay` 用 `(d2−d1)/86400000 === 1`，夏令时切换日当天是 23h/25h → 0.958/1.042 ≠ 1 → **连续签到被误判中断，每年断 2 次**。UTC+8 无夏令时，改用 `dayIndex()` 后根治。
+3. 消除"什么是天"的最后一处歧义，前后端与服务端共用同一个 `dayIndex()`。
+
+**改动范围（3 处，必须同改）**
+
+| # | 位置 | 改动 |
+| --- | --- | --- |
+| 1 | `userStore.ts:55 isSameDay` | `return dayIndex(a) === dayIndex(b)` |
+| 2 | `userStore.ts:61 isConsecutiveDay` | `return dayIndex(curr) - dayIndex(prev) === 1` |
+| 3 | `Home.tsx:52` | `const today = new Date().setHours(0,0,0,0)` → `const todayStart = dayStartUtc8(Date.now())` |
+
+> ⚠️ **第 3 处不能漏**。只改 1、2 不改 3，会导致 Home 的「已签到」按钮状态与 `dailyCheckin()` 的实际判定互相矛盾（按钮显示可点，点了却返回"今天已签到"，或反之）。
+> `Home.tsx` 虽在"尽量不动"清单里，但这 2 行是**日期显示计算，不是玩法逻辑**，且不动就会出 bug。
+
+**共享定义（放进 `shared/constants.ts`）**
+```ts
+export const TZ_OFFSET_MS = 8 * 3_600_000;                       // UTC+8，无夏令时
+export const dayIndex = (ts: number) => Math.floor((ts + TZ_OFFSET_MS) / 86_400_000);
+export const dayStartUtc8 = (ts: number) => dayIndex(ts) * 86_400_000 - TZ_OFFSET_MS;
+```
+`src/store/userStore.ts` 与 `server/merge.ts` 都从这里 import，彻底消除两端漂移。
+
+**风险评估：低**
+
+| 风险 | 评估 |
+| --- | --- |
+| 存量数据要迁移吗 | **不需要**。`lastDailyCheckin` 存的是绝对 epoch 毫秒，`dayIndex()` 对任意历史时间戳都成立 |
+| 海外用户"每日"边界偏移 | 边界变成当地上午 8–9 点（美西）而非午夜。**一致、可预期**（PM 已知悉并接受） |
+| 上线当次的一次性抖动 | 极少数海外用户可能**多领一次**或**晚几小时才能领**，幅度 ≤1 次签到（50 XP + 500 豆），一次性 |
+| 触碰 `Home.tsx` | 2 行，非玩法逻辑，且是必需的一致性修复 |
+
+**结论：执行。** 已更新 §2.2 改动清单与 T01 任务。
+
+### Q9-续：签到奖励重复领取 —— 确认 P0 接受 + P1 收口
+
+**PM 的分析成立，我原来的推演确实漏了洞**：`max` 保护的是 `last_daily_checkin` / `consecutive_login_days` 两个**状态字段**，但签到同时发放的 **+50 XP / +500 欢乐豆走的是增量累加通道**（`xp = cloud.xp + delta.xp`），不受 max 保护。
+
+复现路径：设备 B 用**自己的时钟**判定"今天还没签" → 本地发放 → `delta.xp = +50` 被 push → 云端 `xp += 50`。极端情况手动回拨系统时间可无限领取。
+
+**确认排期**：
+- **P0 接受缺口**。单次损失 50 XP，仅影响装饰性段位，无货币价值、不构成游戏优势；G3「零破坏」优先级更高。
+- **P1 SYNC-12 收口**（接受 PM 的设计）。契约预留如下，P1 直接实现即可：
+  ```
+  POST /api/sync/checkin   → { snapshot, revision, granted: { xp, points, consecutiveLoginDays } }
+  服务端按 UTC+8 裁决当天是否已签；已签返回 granted:null 且不改数据
+  在线时前端改调此接口；离线时仍本地发放（离线场景的重复领取仍存在，属已知边界）
+  ```
+- **P0 免费加一道兜底**：`mergeProgress` 对累加型字段加**单次 delta 上限**（`|delta| > 10_000_000` 时记 warn 日志并截断），只防灾难性失控，不影响正常玩法。
 
 ---
 
-## 附录 A：验收清单（T05.4 逐条勾选）
+## 附录 A：验收清单（T05.5 逐条勾选）
 
 | # | 验收项 | 对应需求 |
 | --- | --- | --- |
@@ -2038,11 +2582,17 @@ curl -s -b $C -X POST $B/auth/logout
 | 8 | 置空 `SUPABASE_SERVICE_ROLE_KEY` 重启后：无报错弹窗、无白屏、无登录入口 | US-09 / NFR-01 |
 | 9 | 人为 mock 500 / 超时 / 断网：无未捕获异常、无白屏、仍可完整游玩 | NFR-02 |
 | 10 | 375px 与 430px 下逐页走查：无横向滚动、触控区 ≥44×44、主按钮 52px、输入框 48px | NFR-03 |
-| 11 | `git diff` 中不含任何玩法逻辑修改；`userStore.ts` 零改动 | NFR-04 |
+| 11 | `git diff` 中不含任何玩法逻辑修改；`userStore.ts` 的 diff **只有 `isSameDay`/`isConsecutiveDay` 两个私有函数体各 1 行**，无任何导出签名变化 | NFR-04 |
 | 12 | `npm run check:secrets` → dist 中 `service_role`/`SERVICE_ROLE`/`SESSION_SECRET` 0 命中 | NFR-05 |
 | 13 | 单次 `sync/push` payload < 8KB；同步全部异步不阻塞交互 | NFR-06 |
 | 14 | 德州 / 21点 / 专项训练 / 好友房 / 掼蛋 5 条链路冒烟 100% 通过 | G3 |
 | 15 | 数据库中 `password_hash` 均为 `$2a$10$` / `$2b$10$` 前缀 | AUTH-09 |
+| **16** | **PM Q3**：注册/登录后停在迁移弹窗 5 分钟不动，服务端 `xp` 数值**完全不变**；点「稍后再说」/✕/遮罩后 30 分钟内服务端 `xp` 仍不变 | SYNC-04 |
+| **17** | **PM Q2**：迁移摘要卡固定展示昵称/头像归属行；真冲突时出现二选一且默认「保留云端」；选「改用本机」后云端确实改为本机值 | SYNC-04 |
+| **18** | **PM Q4**：断网点「立即同步」，本地数据一条不少；push 成功 / pull 失败时显示「已上传 · 待刷新」且云端已收到增量 | UI-03 |
+| **19** | **PM Q5**：已登录区块可见「退出登录后重新登录即强制以云端为准」的恢复路径提示 | US-08 |
+| **20** | **PM Q1①**：人为传 `clientUpdatedAt = now + 10min`，落库 `client_updated_at` 不超过服务端 now | SYNC-03 |
+| **21** | **PM Q8**：DST 切换日前后各签到一次，`consecutiveLoginDays` 能到 2；Home 的签到按钮状态与 `dailyCheckin()` 判定一致 | AUTH-07 |
 
 ---
 
@@ -2053,3 +2603,7 @@ curl -s -b $C -X POST $B/auth/logout
 3. **`captureLocal` 必须在 `applyRemote` 之前执行**。顺序反了，本机进度就被云端默认值冲掉，迁移弹窗会展示一片零。
 4. **`server/config.ts` 必须用 getter 读 `process.env`**，不能模块顶层固化，否则 Vite dev 的 `loadEnv` 赋值晚于模块求值，本地永远 `cloud:false`。
 5. **`saveProfileRaw` / `writeDrillStatsRaw` 是新增的无通知版本**，供 `writeLocalSnapshot` 使用；**不要**让它们替换掉 `saveProfile` / `recordAnswer`，后者必须保留 `notifyWrite()`。
+6. **「稍后再说」不是"什么都不做"**（§6.9）。只释放挂起而不 rebase，冻结期攒下的增量会在释放瞬间被静默推上去 —— 用户没做选择，合并却已经发生了。必须先 `syncEngine.setBase(readLocalSnapshot(), base.revision)` 再释放。
+7. **「立即同步」push 失败时禁止 pull**（§6.10）。顺序反了就是用云端旧值覆盖本机新数据，属于不可逆的数据丢失。
+8. **UTC+8 改造有 3 个改动点，不是 2 个**（§6.12 / T01.13）。漏掉 `Home.tsx:52`，签到按钮的 disabled 状态就会和 `dailyCheckin()` 的真实判定打架。
+9. **挂起的释放必须写在 `finally` 或 effect cleanup 里**（§6.9）。只要存在任何一条"提前 return"的路径漏了释放，用户就会永久停在上报失效的状态而不自知。

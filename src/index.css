@@ -253,3 +253,23 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   .brand-slider [data-slot="slider-thumb"]:hover { filter: brightness(1.1); }
   .brand-slider [data-slot="slider-thumb"]:active { transform: scale(1.08); filter: brightness(1.14); }
 }
+
+/* ===== 迁移进度条（Progress 组件 / 未知进度态扫光） ===== */
+@keyframes progress-sweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(333%); }
+}
+@keyframes progress-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+.progress-sweep { animation: progress-sweep 1.4s ease-in-out infinite alternate; }
+
+/* 降低动效偏好：扫光改为整条脉冲，避免元素因 transform 停在视口外而完全看不见 */
+@media (prefers-reduced-motion: reduce) {
+  .progress-sweep {
+    animation: progress-pulse 2s ease-in-out infinite;
+    transform: none;
+    width: 100%;
+  }
+}
