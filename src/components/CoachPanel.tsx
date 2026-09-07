@@ -10,7 +10,7 @@ const REC_LABEL: Record<string, { text: string; color: string }> = {
   fold:  { text: '弃牌 FOLD',  color: 'bg-danger text-white' },
   check: { text: '过牌 CHECK', color: 'bg-ink-card border border-gold/40 text-ivory' },
   call:  { text: '跟注 CALL',  color: 'bg-emerald-600 text-white' },
-  raise: { text: '加注 RAISE', color: 'bg-gold text-ink' },
+  raise: { text: '加注 RAISE', color: 'bg-gold text-charcoal' },
 };
 
 export function CoachPanel({ state, heroIdx, advice }: {

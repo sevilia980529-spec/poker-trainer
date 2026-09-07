@@ -34,7 +34,7 @@ import {
 } from '../components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { cn } from '../lib/utils';
-import { Menu, GraduationCap, Volume2, VolumeX, Coins, Target, Club, Users, BookOpen, Spade, Trophy, Settings, Home as HomeIcon } from 'lucide-react';
+import { Menu, GraduationCap, Volume2, VolumeX, Coins, Target, Club, Users, BookOpen, Spade, Trophy, Settings, Home as HomeIcon, Sun, Moon } from 'lucide-react';
 
 // 椭圆桌 5 个 AI 座位（hero 固定在桌面下方）——全部收进容器内侧，避免手机端挡牌/出屏
 const AI_SEAT_POS = [
@@ -97,6 +97,15 @@ export default function PokerTrainer() {
       return [10, 20];
     } catch { return [10, 20]; }
   });
+  // 主题：暗（默认）/ 亮，持久化到 localStorage，默认保持暗色
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    try { return (localStorage.getItem('poker-theme') as 'dark' | 'light') || 'dark'; }
+    catch { return 'dark'; }
+  });
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    try { localStorage.setItem('poker-theme', theme); } catch { /* ignore */ }
+  }, [theme]);
   const heroStackRef = useRef(BUY_IN);
   const aiStacksRef = useRef<number[]>([]);
   const nickname = useUserStore((s) => s.nickname);
@@ -280,7 +289,7 @@ export default function PokerTrainer() {
   const nextHand = () => { const d = (dealerIdx + 1) % tableConfig.playerCount; setDealerIdx(d); startHand(d); };
 
   return (
-    <div className="h-dvh flex flex-col bg-[radial-gradient(ellipse_at_top,#0c1a12_0%,#071007_45%,#030604_100%)] text-ivory overflow-hidden select-none">
+    <div className="h-dvh flex flex-col app-canvas text-ivory overflow-hidden select-none">
       {/* ===== 浮动顶栏 ===== */}
       <header className="relative z-30 flex items-center justify-between px-3 py-2 safe-top">
         <DropdownMenu>
@@ -289,17 +298,17 @@ export default function PokerTrainer() {
               <Menu className="w-[18px] h-[18px]" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-white text-ink border border-ink-light/40">
-            <DropdownMenuItem asChild><Link to="/" className="flex items-center gap-2"><HomeIcon className="w-4 h-4 text-ink" />首页</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link to="/training" className="flex items-center gap-2"><Target className="w-4 h-4 text-ink" />训练中心</Link></DropdownMenuItem>
+          <DropdownMenuContent className="bg-white text-charcoal border border-ink-light/40">
+            <DropdownMenuItem asChild><Link to="/" className="flex items-center gap-2"><HomeIcon className="w-4 h-4 text-charcoal" />首页</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link to="/training" className="flex items-center gap-2"><Target className="w-4 h-4 text-charcoal" />训练中心</Link></DropdownMenuItem>
             <DropdownMenuItem asChild><Link to="/blackjack" className="flex items-center gap-2"><Club className="w-4 h-4 text-emerald-600" />21点训练室</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link to="/room" className="flex items-center gap-2"><Users className="w-4 h-4 text-ink" />好友房</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link to="/room" className="flex items-center gap-2"><Users className="w-4 h-4 text-charcoal" />好友房</Link></DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setShowRules(true)}><BookOpen className="w-4 h-4 text-violet-600 mr-2" />规则与术语</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <div className="flex items-center gap-2 text-lg font-bold tracking-widest text-ivory">
-          <Spade className="w-5 h-5 text-emerald-400" />德州训练场
+        <div className="flex items-center gap-2 text-xl font-bold tracking-widest text-ivory">
+          <Spade className="w-6 h-6 text-emerald-400" />德州训练场
         </div>
 
         <div className="flex items-center gap-2">
@@ -313,6 +322,10 @@ export default function PokerTrainer() {
           <button onClick={toggleSound} title="音效"
             className="w-9 h-9 rounded-full glass border border-gold/20 flex items-center justify-center text-ivory">
             {soundOn ? <Volume2 className="w-[18px] h-[18px]" /> : <VolumeX className="w-[18px] h-[18px] text-ivory/40" />}
+          </button>
+          <button onClick={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))} title="切换日/夜模式"
+            className="w-9 h-9 rounded-full glass border border-gold/20 flex items-center justify-center text-ivory">
+            {theme === 'dark' ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
           </button>
           <Popover>
             <PopoverTrigger asChild>
@@ -361,7 +374,7 @@ export default function PokerTrainer() {
                   ? Math.round(profile.excellentActions / (profile.excellentActions + profile.mistakes) * 100) + '%' : '—'}</span>
               </div>
               {profile.points < BUY_IN && (
-                <Button size="sm" className="w-full mt-3 bg-gradient-to-b from-gold-light to-gold hover:from-gold hover:to-gold-dark text-ink" onClick={relief}>
+                <Button size="sm" className="w-full mt-3 bg-gradient-to-b from-gold-light to-gold hover:from-gold hover:to-gold-dark text-charcoal" onClick={relief}>
                   领取补给 +{DAILY_BONUS}
                 </Button>
               )}
@@ -370,289 +383,301 @@ export default function PokerTrainer() {
         </div>
       </header>
 
-      {/* ===== 牌桌 ===== */}
-      <main className="flex-1 relative flex items-center justify-center px-2">
-        <div className="relative w-[min(96vw,820px)] aspect-[1.55/1] sm:aspect-[2.1/1]">
-          {/* 桌面：木质立体桌沿 + 绒布呢面 + 中心聚光 + 暗角（纵向内缩，给座位让位） */}
-          <div className="absolute inset-x-0 top-[9%] bottom-[9%] rounded-[2.6rem] p-[9px]
-            bg-[linear-gradient(150deg,#6b4226_0%,#3a2616_48%,#241509_100%)]
-            shadow-[0_20px_55px_rgba(0,0,0,0.65),inset_0_0_0_1px_rgba(255,255,255,0.06)]">
-            <div className="relative w-full h-full rounded-[2rem] overflow-hidden
-              bg-[url('/images/bg-table-felt.png')] bg-cover bg-center
-              shadow-[inset_0_26px_74px_rgba(0,0,0,0.55),inset_0_-14px_36px_rgba(0,0,0,0.4)]">
-              {/* 绒布细噪点 */}
-              <div className="absolute inset-0 opacity-[0.07] mix-blend-overlay pointer-events-none"
-                style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.7) 1px,transparent 1px)', backgroundSize: '4px 4px' }} />
-              {/* 中心聚光光斑 */}
-              <div className="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2 w-3/5 h-2/5 rounded-[50%] pointer-events-none"
-                style={{ background: 'radial-gradient(ellipse, rgba(255,255,210,0.13) 0%, transparent 70%)' }} />
-              {/* 暗角 */}
-              <div className="absolute inset-0 rounded-[2rem] pointer-events-none"
-                style={{ boxShadow: 'inset 0 0 70px 18px rgba(0,0,0,0.45)' }} />
-            </div>
-          </div>
+      {/* ===== 内容区：竖屏上下排布，横屏左右并排 ===== */}
+      <div className="flex-1 min-h-0 flex flex-col landscape:flex-row">
 
-          {/* 结算：底池筹码滑向赢家 */}
-          {potFly && (
-            <div className="pot-fly absolute z-40 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ left: `${potFly.x}%`, top: `${potFly.y}%` }}>
-              <ChipStack amount={potFly.amount} size={30} />
-            </div>
-          )}
-
-          {!game ? (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Button size="lg" className="bg-gradient-to-b from-gold-light to-gold hover:from-gold hover:to-gold-dark text-ink text-lg px-10 h-14 rounded-full shadow-xl"
-                onClick={() => startHand(dealerIdx)}>
-                开始训练<span className="text-xs opacity-80 ml-2">盲注 {blinds[0]}/{blinds[1]}</span>
-              </Button>
-            </div>
-          ) : (
-            <>
-              {/* 中央：底池 + 公共牌 */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2">
-                {game.players.reduce((s, p) => s + p.handBet, 0) > 0 && game.street !== 'handOver' && (
-                  <ChipStack amount={game.players.reduce((s, p) => s + p.handBet, 0)} size={24} />
-                )}
-                <div key={game.players.reduce((s, p) => s + p.handBet, 0)}
-                  className="text-gold font-bold text-xs sm:text-sm bg-gold/25 backdrop-blur-sm border border-gold/60 px-3 py-0.5 rounded-full anim-pot num">
-                  底池 <AnimatedNumber value={game.players.reduce((s, p) => s + p.handBet, 0)} /> · {STREET_NAME[game.street]}
-                </div>
-                <div className="flex gap-1 sm:gap-1.5" style={{ perspective: 700 }}>
-                  {game.community.map((c, i) => (
-                    <span key={cardToString(c)} className="anim-reveal" style={{ animationDelay: `${(i % 3) * 90}ms` }}>
-                      <PlayingCard card={c} />
-                    </span>
-                  ))}
-                  {Array.from({ length: 5 - game.community.length }).map((_, i) => (
-                    <div key={`e${i}`} className="w-12 aspect-[5/7] rounded-md border-2 border-white/10" />
-                  ))}
-                </div>
-                {game.street === 'handOver' && (
-                  <div className="flex flex-col items-center gap-1.5 mt-1">
-                    <p className="text-xs text-ivory bg-black/60 rounded-full px-3 py-1 max-w-72 text-center">{game.handOverInfo}</p>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" className="border-gold/30 text-ivory hover:border-gold/60"
-                        onClick={() => setShowReview(true)}>复盘</Button>
-                      <Button size="sm" className="bg-gradient-to-b from-gold-light to-gold hover:from-gold hover:to-gold-dark text-ink" onClick={nextHand}>下一手 ▶</Button>
-                    </div>
-                  </div>
-                )}
+        {/* ===== 牌桌 ===== */}
+        <main className="flex-1 relative flex items-center justify-center px-2 min-h-0">
+          <div className="relative w-[min(96vw,820px)] aspect-[1.55/1] sm:aspect-[2.1/1] landscape:w-auto landscape:h-full landscape:aspect-[1.9/1] landscape:max-w-[58vw]">
+            {/* 桌面：木质立体桌沿 + 绒布呢面 + 中心聚光 + 暗角（纵向内缩，给座位让位） */}
+            <div className="absolute inset-x-0 top-[9%] bottom-[9%] rounded-[2.6rem] p-[9px]
+              bg-[linear-gradient(150deg,#6b4226_0%,#3a2616_48%,#241509_100%)]
+              shadow-[0_20px_55px_rgba(0,0,0,0.65),inset_0_0_0_1px_rgba(255,255,255,0.06)]">
+              <div className="relative w-full h-full rounded-[2rem] overflow-hidden
+                bg-[url('/images/bg-table-felt.png')] bg-cover bg-center
+                shadow-[inset_0_26px_74px_rgba(0,0,0,0.55),inset_0_-14px_36px_rgba(0,0,0,0.4)]">
+                {/* 绒布细噪点 */}
+                <div className="absolute inset-0 opacity-[0.07] mix-blend-overlay pointer-events-none"
+                  style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.7) 1px,transparent 1px)', backgroundSize: '4px 4px' }} />
+                {/* 中心聚光光斑 */}
+                <div className="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2 w-3/5 h-2/5 rounded-[50%] pointer-events-none"
+                  style={{ background: 'radial-gradient(ellipse, rgba(255,255,210,0.13) 0%, transparent 70%)' }} />
+                {/* 暗角 */}
+                <div className="absolute inset-0 rounded-[2rem] pointer-events-none"
+                  style={{ boxShadow: 'inset 0 0 70px 18px rgba(0,0,0,0.45)' }} />
               </div>
+            </div>
 
-              {/* AI 座位（左右下角的手牌横排在头像旁，收进桌面外暗区，不挡公共牌） */}
-              {game.players.slice(1).map((p, i) => {
-                const slot = seatSlots[i] ?? 2;
-                const corner = slot === 0 || slot === 4;
-                return (
-                <div key={p.id} className={cn('absolute flex gap-1',
-                  corner ? (slot === 0 ? 'flex-row-reverse items-center' : 'flex-row items-center')
-                    : slot === 2 ? 'flex-col-reverse items-center' : 'flex-col items-center',
-                  AI_SEAT_POS[slot],
-                  p.folded && 'opacity-40 grayscale',
-                  game.actingIdx !== p.id && p.lastAction?.includes('全下') && 'anim-allin')}>
-                  <div className="flex -space-x-3">
-                    {p.hole.map((c, j) => {
-                      const revealed = game.street === 'handOver' && !p.folded && !!game.winners;
-                      return (
-                        <span key={`${handNumber}-${p.id}-${j}-${revealed}`}
-                          className={p.folded ? 'anim-fold' : revealed ? 'anim-flip' : 'anim-deal'}
-                          style={{ animationDelay: revealed ? `${j * 120}ms` : `${(i * 2 + j) * 90}ms` }}>
-                          <PlayingCard card={c} small faceDown={!revealed} />
-                        </span>
-                      );
-                    })}
+            {/* 结算：底池筹码滑向赢家 */}
+            {potFly && (
+              <div className="pot-fly absolute z-40 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                style={{ left: `${potFly.x}%`, top: `${potFly.y}%` }}>
+                <ChipStack amount={potFly.amount} size={30} />
+              </div>
+            )}
+
+            {!game ? (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Button size="lg" className="bg-gradient-to-b from-gold-light to-gold hover:from-gold hover:to-gold-dark text-charcoal text-lg px-10 h-14 rounded-full shadow-xl"
+                  onClick={() => startHand(dealerIdx)}>
+                  开始训练<span className="text-xs opacity-80 ml-2">盲注 {blinds[0]}/{blinds[1]}</span>
+                </Button>
+              </div>
+            ) : (
+              <>
+                {/* 中央：底池 + 公共牌 */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2">
+                  {game.players.reduce((s, p) => s + p.handBet, 0) > 0 && game.street !== 'handOver' && (
+                    <ChipStack amount={game.players.reduce((s, p) => s + p.handBet, 0)} size={24} />
+                  )}
+                  <div key={game.players.reduce((s, p) => s + p.handBet, 0)}
+                    className="text-gold font-bold text-sm sm:text-base bg-gold/25 backdrop-blur-sm border border-gold/60 px-3 py-0.5 rounded-full anim-pot num">
+                    底池 <AnimatedNumber value={game.players.reduce((s, p) => s + p.handBet, 0)} /> · {STREET_NAME[game.street]}
                   </div>
-                  <div className="flex flex-col items-center gap-1">
-                  <div className={cn('flex items-center gap-1.5 rounded-full bg-black/70 pl-1 pr-2.5 py-1 border',
-                    game.actingIdx === p.id ? 'border-2 border-gold' : 'border-gold/20',
-                    game.street === 'handOver' && game.winners?.some(w => w.playerId === p.id) && 'anim-winner border-gold')}>
-                    <span className={cn('w-7 h-7 rounded-full bg-ink-light flex items-center justify-center text-sm relative',
-                      game.actingIdx === p.id ? 'anim-ring' : 'anim-breathe')}>
-                      <Avatar value={styleAvatar(p.style)} size={28} />
-                      {game.dealerIdx === p.id && (
+                  <div className="flex gap-1 sm:gap-1.5" style={{ perspective: 700 }}>
+                    {game.community.map((c, i) => (
+                      <span key={cardToString(c)} className="anim-reveal" style={{ animationDelay: `${(i % 3) * 90}ms` }}>
+                        <PlayingCard card={c} />
+                      </span>
+                    ))}
+                    {Array.from({ length: 5 - game.community.length }).map((_, i) => (
+                      <div key={`e${i}`} className="w-12 aspect-[5/7] rounded-md border-2 border-white/10" />
+                    ))}
+                  </div>
+                  {game.street === 'handOver' && (
+                    <div className="flex flex-col items-center gap-1.5 mt-1">
+                      <p className="text-sm text-ivory bg-black/60 rounded-full px-3 py-1 max-w-72 text-center">{game.handOverInfo}</p>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" className="border-gold/30 text-ivory hover:border-gold/60"
+                          onClick={() => setShowReview(true)}>复盘</Button>
+                        <Button size="sm" className="bg-gradient-to-b from-gold-light to-gold hover:from-gold hover:to-gold-dark text-charcoal" onClick={nextHand}>下一手 ▶</Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* AI 座位（左右下角的手牌横排在头像旁，收进桌面外暗区，不挡公共牌） */}
+                {game.players.slice(1).map((p, i) => {
+                  const slot = seatSlots[i] ?? 2;
+                  const corner = slot === 0 || slot === 4;
+                  const showBet = p.streetBet > 0;
+                  return (
+                  <div key={p.id} className={cn('absolute flex gap-1 z-10',
+                    corner ? (slot === 0 ? 'flex-row-reverse items-center' : 'flex-row items-center')
+                      : slot === 2 ? 'flex-col-reverse items-center' : 'flex-col items-center',
+                    AI_SEAT_POS[slot],
+                    p.folded && 'opacity-40 grayscale',
+                    game.actingIdx !== p.id && p.lastAction?.includes('全下') && 'anim-allin')}>
+                    <div className="flex -space-x-3">
+                      {p.hole.map((c, j) => {
+                        const revealed = game.street === 'handOver' && !p.folded && !!game.winners;
+                        return (
+                          <span key={`${handNumber}-${p.id}-${j}-${revealed}`}
+                            className={p.folded ? 'anim-fold' : revealed ? 'anim-flip' : 'anim-deal'}
+                            style={{ animationDelay: revealed ? `${j * 120}ms` : `${(i * 2 + j) * 90}ms` }}>
+                            <PlayingCard card={c} small faceDown={!revealed} />
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      {/* 正上方座位（slot 2）的下注徽章提到头像上方，避免筹码堆向下延伸遮挡底部玩家头像 */}
+                      {slot === 2 && showBet && (
+                        <span key={`bet-${p.streetBet}`} className="anim-chip inline-flex items-center gap-1 bg-ink/80 rounded-full pl-0.5 pr-1.5 py-0.5">
+                          <Chip exact amount={100} size={15} showLabel={false} />
+                          <span className="text-[12px] font-mono text-gold font-bold">{p.streetBet}</span>
+                        </span>
+                      )}
+                      <div className={cn('flex items-center gap-1.5 rounded-full bg-ink/80 pl-1 pr-2.5 py-1 border',
+                        game.actingIdx === p.id ? 'border-2 border-gold' : 'border-gold/20',
+                        game.street === 'handOver' && game.winners?.some(w => w.playerId === p.id) && 'anim-winner border-gold')}>
+                        <span className={cn('w-7 h-7 rounded-full bg-ink-light flex items-center justify-center text-sm relative',
+                          game.actingIdx === p.id ? 'anim-ring' : 'anim-breathe')}>
+                          <Avatar value={styleAvatar(p.style)} size={28} />
+                          {game.dealerIdx === p.id && (
+                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-gold text-[8px] text-black font-bold flex items-center justify-center">D</span>
+                          )}
+                        </span>
+                        <div className="leading-tight">
+                          <div className="text-[13px] font-semibold whitespace-nowrap">{p.name}</div>
+                          <div className="text-[12px] text-gold font-mono"><AnimatedNumber value={p.chips} /></div>
+                        </div>
+                      </div>
+                      {game.actingIdx === p.id && game.street !== 'handOver' && (
+                        <div className="flex gap-1 py-0.5">
+                          {[0, 1, 2].map(d => (
+                            <span key={d} className="think-dot w-1 h-1 rounded-full bg-amber-300"
+                              style={{ animationDelay: `${d * 0.15}s` }} />
+                          ))}
+                        </div>
+                      )}
+                      {/* 下注徽章：统一在名字正下方（正上方座位已在头像上方渲染） */}
+                      {slot !== 2 && showBet && (
+                        <span key={`bet-${p.streetBet}`} className="anim-chip inline-flex items-center gap-1 bg-ink/80 rounded-full pl-0.5 pr-1.5 py-0.5">
+                          <Chip exact amount={100} size={15} showLabel={false} />
+                          <span className="text-[12px] font-mono text-gold font-bold">{p.streetBet}</span>
+                        </span>
+                      )}
+                    </div>
+                    {p.lastAction && (
+                      <div key={`${p.id}-${p.lastAction}-${game.actingIdx}`}
+                        className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] bg-gold/90 rounded-full px-2 py-0.5 whitespace-nowrap anim-pop">
+                        {p.lastAction}
+                      </div>
+                    )}
+                  </div>
+                  );
+                })}
+
+                {/* 我的座位（牌桌正下方暗区，置于最上层，确保头像不被对手筹码遮挡） */}
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-[-4%] z-20 flex flex-col items-center gap-1">
+                  {game.players[0].lastAction && (
+                    <div key={`hero-${game.players[0].lastAction}-${game.actingIdx}`}
+                      className="text-[10px] bg-gold/90 rounded-full px-2 py-0.5 whitespace-nowrap anim-pop">
+                      {game.players[0].lastAction}
+                    </div>
+                  )}
+                  <div className={cn('flex items-center gap-1.5 rounded-full bg-ink/80 pl-1 pr-2.5 py-1 border',
+                    game.actingIdx === 0 && game.street !== 'handOver' ? 'border-2 border-gold' : 'border-gold/20',
+                    game.street === 'handOver' && game.winners?.some(w => w.playerId === 0) && 'anim-winner border-gold',
+                    game.players[0].lastAction?.includes('全下') && game.actingIdx !== 0 && 'anim-allin')}>
+                    <span className={cn('w-7 h-7 rounded-full bg-gradient-to-br from-gold to-gold-dark flex items-center justify-center text-sm relative',
+                      game.actingIdx === 0 && game.street !== 'handOver' ? 'anim-ring' : 'anim-breathe')}>
+                      <Avatar value={avatar} size={28} />
+                      {game.dealerIdx === 0 && (
                         <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-gold text-[8px] text-black font-bold flex items-center justify-center">D</span>
                       )}
                     </span>
                     <div className="leading-tight">
-                      <div className="text-[11px] font-semibold whitespace-nowrap">{p.name}</div>
-                      <div className="text-[10px] text-gold font-mono"><AnimatedNumber value={p.chips} /></div>
+                      <div className="text-[13px] font-semibold whitespace-nowrap">{nickname}</div>
+                      <div className="text-[12px] text-gold font-mono num"><AnimatedNumber value={game.players[0].chips} /></div>
                     </div>
                   </div>
-                  {game.actingIdx === p.id && game.street !== 'handOver' && (
-                    <div className="flex gap-1 py-0.5">
-                      {[0, 1, 2].map(d => (
-                        <span key={d} className="think-dot w-1 h-1 rounded-full bg-amber-300"
-                          style={{ animationDelay: `${d * 0.15}s` }} />
-                      ))}
-                    </div>
-                  )}
-                  {/* 下注徽章：统一在名字正下方 */}
-                  {p.streetBet > 0 && (
-                    <span key={p.streetBet} className="anim-chip inline-flex items-center gap-1 bg-black/70 rounded-full pl-0.5 pr-1.5 py-0.5">
-                      <Chip exact amount={100} size={15} showLabel={false} />
-                      <span className="text-[10px] font-mono text-gold font-bold">{p.streetBet}</span>
-                    </span>
-                  )}
-                  </div>
-                  {p.lastAction && (
-                    <div key={`${p.id}-${p.lastAction}-${game.actingIdx}`}
-                      className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] bg-gold/90 rounded-full px-2 py-0.5 whitespace-nowrap anim-pop">
-                      {p.lastAction}
-                    </div>
-                  )}
-                </div>
-                );
-              })}
-
-              {/* 我的座位（牌桌正下方暗区） */}
-              <div className="absolute left-1/2 -translate-x-1/2 bottom-[-4%] flex flex-col items-center gap-1">
-                {game.players[0].lastAction && (
-                  <div key={`hero-${game.players[0].lastAction}-${game.actingIdx}`}
-                    className="text-[10px] bg-gold/90 rounded-full px-2 py-0.5 whitespace-nowrap anim-pop">
-                    {game.players[0].lastAction}
-                  </div>
-                )}
-                <div className={cn('flex items-center gap-1.5 rounded-full bg-black/70 pl-1 pr-2.5 py-1 border',
-                  game.actingIdx === 0 && game.street !== 'handOver' ? 'border-2 border-gold' : 'border-gold/20',
-                  game.street === 'handOver' && game.winners?.some(w => w.playerId === 0) && 'anim-winner border-gold',
-                  game.players[0].lastAction?.includes('全下') && game.actingIdx !== 0 && 'anim-allin')}>
-                  <span className={cn('w-7 h-7 rounded-full bg-gradient-to-br from-gold to-gold-dark flex items-center justify-center text-sm relative',
-                    game.actingIdx === 0 && game.street !== 'handOver' ? 'anim-ring' : 'anim-breathe')}>
-                    <Avatar value={avatar} size={28} />
-                    {game.dealerIdx === 0 && (
-                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-gold text-[8px] text-black font-bold flex items-center justify-center">D</span>
+                    {game.players[0].streetBet > 0 && (
+                      <span key={`hero-bet-${game.players[0].streetBet}`} className="anim-chip inline-flex items-center gap-1 bg-ink/80 rounded-full pl-0.5 pr-1.5 py-0.5">
+                        <Chip exact amount={100} size={15} showLabel={false} />
+                        <span className="text-[12px] font-mono text-gold font-bold"><AnimatedNumber value={game.players[0].streetBet} /></span>
+                      </span>
                     )}
-                  </span>
-                  <div className="leading-tight">
-                    <div className="text-[11px] font-semibold whitespace-nowrap">{nickname}</div>
-                    <div className="text-[10px] text-gold font-mono num"><AnimatedNumber value={game.players[0].chips} /></div>
-                  </div>
                 </div>
-                  {game.players[0].streetBet > 0 && (
-                    <span key={`hero-bet-${game.players[0].streetBet}`} className="anim-chip inline-flex items-center gap-1 bg-black/70 rounded-full pl-0.5 pr-1.5 py-0.5">
-                      <Chip exact amount={100} size={15} showLabel={false} />
-                      <span className="text-[10px] font-mono text-gold font-bold"><AnimatedNumber value={game.players[0].streetBet} /></span>
-                    </span>
-                  )}
-              </div>
-            </>
-          )}
-        </div>
-      </main>
-
-      {/* ===== Hero 区域：手牌 + 教练条 + 操作 ===== */}
-      {game && (
-        <footer className="relative z-30 pb-3 pt-2 flex flex-col items-center gap-2 safe-bottom bg-gradient-to-t from-ink via-ink/95 to-ink/70 border-t border-white/5">
-          {/* 位置 + 手牌 */}
-          <div className="flex flex-col items-center gap-1">
-            <div className="flex gap-2">
-              {game.players[0].hole.map((c, i) => (
-                <span key={`${handNumber}-${cardToString(c)}`} className={game.players[0].folded ? 'anim-fold' : 'anim-deal'} style={{ animationDelay: `${i * 130}ms` }}>
-                  <PlayingCard card={c} />
-                </span>
-              ))}
-            </div>
+              </>
+            )}
           </div>
+        </main>
 
-          {/* 我的信息行：头像 + 昵称 + 位置 | 筹码 */}
-          <div className="w-full max-w-lg flex items-center justify-between text-xs px-4">
-            <div className="flex items-center gap-1.5">
-              <Avatar value={avatar} size={20} />
-              <span className="text-ivory font-medium">{nickname}</span>
-              <span className="text-gold/80 font-bold">
-                · {heroPositionName(game, 0)}{game.dealerIdx === 0 && ' · 庄家'}
-              </span>
-            </div>
-            <div className="text-gold font-bold num"><Icon e="💰" size={16} className="align-middle" /> <AnimatedNumber value={game.players[0].chips} /></div>
-          </div>
-
-          {/* 教练建议条（点开看详情） */}
-          {advice && (
-            <Sheet>
-              <SheetTrigger asChild>
-                <button className="flex items-center gap-2 bg-emerald-950/80 border border-emerald-700 rounded-full px-4 py-1.5 text-xs">
-                  <GraduationCap className="w-4 h-4 text-emerald-300" />
-                  <span className="font-bold text-emerald-300">
-                    {advice.recommendation === 'raise' ? `建议加注${advice.raiseSize ? '到 ' + advice.raiseSize : ''}`
-                      : advice.recommendation === 'fold' ? '建议弃牌'
-                      : advice.recommendation === 'call' ? '建议跟注' : '建议过牌'}
+        {/* ===== Hero 区域：手牌 + 教练条 + 操作 ===== */}
+        {game && (
+          <footer className="relative z-30 pb-3 pt-2 flex flex-col items-center gap-2 safe-bottom bg-gradient-to-t from-ink via-ink/95 to-ink/70 border-t border-white/5 trainer-footer landscape:w-[40%] landscape:max-w-md landscape:overflow-y-auto landscape:border-t-0 landscape:border-l landscape:border-gold/15 landscape:bg-ink/95 landscape:items-stretch landscape:px-4 landscape:justify-start">
+            {/* 位置 + 手牌 */}
+            <div className="flex flex-col items-center gap-1">
+              <div className="flex gap-2">
+                {game.players[0].hole.map((c, i) => (
+                  <span key={`${handNumber}-${cardToString(c)}`} className={game.players[0].folded ? 'anim-fold' : 'anim-deal'} style={{ animationDelay: `${i * 130}ms` }}>
+                    <PlayingCard card={c} />
                   </span>
-                  {advice.equity && <span className="text-gold font-mono">胜率 {(advice.equity.equity * 100).toFixed(0)}%</span>}
-                  <span className="text-ivory/40">详情 ›</span>
-                </button>
-              </SheetTrigger>
-              <SheetContent side="right" className="bg-ink border-gold/20 text-ivory w-full sm:max-w-md overflow-y-auto">
-                <SheetHeader><SheetTitle className="text-ivory"><Icon e="🎓" size={16} className="align-middle" /> 教练分析</SheetTitle></SheetHeader>
-                <Tabs defaultValue="coach" className="mt-2">
-                  <TabsList className="w-full">
-                    <TabsTrigger value="coach" className="flex-1">教练</TabsTrigger>
-                    <TabsTrigger value="history" className="flex-1">复盘记录</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="coach" className="mt-3">
-                    <CoachPanel state={game} heroIdx={0} advice={advice} />
-                  </TabsContent>
-                  <TabsContent value="history" className="mt-3">
-                    <ReviewHistory reviews={reviews} />
-                  </TabsContent>
-                </Tabs>
-              </SheetContent>
-            </Sheet>
-          )}
-
-          {/* 结算横幅 */}
-          {handResult && game.street === 'handOver' && (
-            <div className={cn('text-base font-bold px-5 py-1.5 rounded-full anim-banner',
-              handResult.delta >= 0 ? 'bg-emerald-900/80 text-emerald-300 shadow-[0_0_18px_rgba(16,185,129,0.4)]' : 'bg-red-900/80 text-red-300 shadow-[0_0_18px_rgba(229,57,53,0.4)]')}>
-              {handResult.delta >= 0 ? '+' : ''}{handResult.delta}
-            </div>
-          )}
-
-          {/* 操作区 */}
-          {heroTurn && game.street !== 'handOver' && (
-            <div className="w-full max-w-lg flex flex-col items-center gap-2">
-              {showRaise && la!.canRaise && (
-                <RaisePanel
-                  min={la!.minRaiseTo} max={la!.maxRaiseTo} step={10}
-                  value={raiseAmt} onChange={setRaiseAmt}
-                  pot={game.players.reduce((s, p) => s + p.handBet, 0)}
-                  bigBlind={game.bigBlind}
-                />
-              )}
-              <div className="flex items-center gap-2 justify-center">
-                {(la!.canFold || la!.canCall) && (
-                  <Button className="btn-action rounded-full h-12 px-6 bg-gradient-to-b from-danger to-[#c62828] hover:from-[#ef5350] hover:to-danger text-white shadow-[0_6px_16px_rgba(229,57,53,0.4)] text-base font-semibold" onClick={() => heroAct('fold')}>弃牌</Button>
-                )}
-                {la!.canCheck && (
-                  <Button className="btn-action rounded-full h-12 px-6 bg-gradient-to-b from-emerald-700/90 to-emerald-950 border border-emerald-500/60 text-emerald-100 text-base font-semibold shadow-md" onClick={() => heroAct('check')}>过牌</Button>
-                )}
-                {la!.canCall && (
-                  <Button className="btn-action rounded-full h-12 px-6 bg-gradient-to-b from-emerald-700/90 to-emerald-950 border border-emerald-500/60 text-emerald-100 text-base font-semibold shadow-md" onClick={() => heroAct('call')}>
-                    跟注 <span className="text-lg font-extrabold">{la!.callAmount}</span>
-                  </Button>
-                )}
-                {la!.canRaise && !showRaise && (
-                  <Button className="btn-action rounded-full h-12 px-6 bg-gradient-to-b from-gold-light to-gold hover:from-gold hover:to-gold-dark text-ink text-base font-bold shadow-[0_6px_16px_rgba(212,168,87,0.4)]" onClick={() => setShowRaise(true)}>
-                    加注
-                  </Button>
-                )}
-                {la!.canRaise && showRaise && (
-                  <>
-                    <Button className="btn-action rounded-full h-12 px-5 text-base font-bold text-white shadow-[0_6px_18px_rgba(192,38,211,0.45)] bg-gradient-to-b from-fuchsia-600 to-purple-900"
-                      onClick={() => heroAct(raiseAmt >= la!.maxRaiseTo ? 'allin' : game.currentBet > 0 ? 'raise' : 'bet', raiseAmt)}>
-                      {raiseAmt >= la!.maxRaiseTo ? `全下 ${raiseAmt}` : `加到 ${raiseAmt}`}
-                    </Button>
-                    <Button variant="ghost" className="btn-action rounded-full text-ivory/60" onClick={() => setShowRaise(false)}>收起</Button>
-                  </>
-                )}
+                ))}
               </div>
             </div>
-          )}
-          {!heroTurn && game.street !== 'handOver' && game.street !== 'showdown' && (
-            <p className="text-[11px] text-ivory/40 h-6">等待其他玩家行动…</p>
-          )}
-        </footer>
-      )}
+
+            {/* 我的信息行：头像 + 昵称 + 位置 | 筹码 */}
+            <div className="w-full max-w-lg flex items-center justify-between text-sm px-4">
+              <div className="flex items-center gap-1.5">
+                <Avatar value={avatar} size={20} />
+                <span className="text-ivory font-medium">{nickname}</span>
+                <span className="text-gold/80 font-bold">
+                  · {heroPositionName(game, 0)}{game.dealerIdx === 0 && ' · 庄家'}
+                </span>
+              </div>
+              <div className="text-gold font-bold num"><Icon e="💰" size={16} className="align-middle" /> <AnimatedNumber value={game.players[0].chips} /></div>
+            </div>
+
+            {/* 教练建议条（点开看详情） */}
+            {advice && (
+              <Sheet>
+                <SheetTrigger asChild>
+                  <button className="flex items-center gap-2 bg-emerald-950/80 border border-emerald-700 rounded-full px-4 py-1.5 text-sm">
+                    <GraduationCap className="w-4 h-4 text-emerald-300" />
+                    <span className="font-bold text-emerald-300">
+                      {advice.recommendation === 'raise' ? `建议加注${advice.raiseSize ? '到 ' + advice.raiseSize : ''}`
+                        : advice.recommendation === 'fold' ? '建议弃牌'
+                        : advice.recommendation === 'call' ? '建议跟注' : '建议过牌'}
+                    </span>
+                    {advice.equity && <span className="text-gold font-mono">胜率 {(advice.equity.equity * 100).toFixed(0)}%</span>}
+                    <span className="text-ivory/40">详情 ›</span>
+                  </button>
+                </SheetTrigger>
+                <SheetContent side="right" className="bg-ink border-gold/20 text-ivory w-full sm:max-w-md overflow-y-auto">
+                  <SheetHeader><SheetTitle className="text-ivory"><Icon e="🎓" size={16} className="align-middle" /> 教练分析</SheetTitle></SheetHeader>
+                  <Tabs defaultValue="coach" className="mt-2">
+                    <TabsList className="w-full">
+                      <TabsTrigger value="coach" className="flex-1">教练</TabsTrigger>
+                      <TabsTrigger value="history" className="flex-1">复盘记录</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="coach" className="mt-3">
+                      <CoachPanel state={game} heroIdx={0} advice={advice} />
+                    </TabsContent>
+                    <TabsContent value="history" className="mt-3">
+                      <ReviewHistory reviews={reviews} />
+                    </TabsContent>
+                  </Tabs>
+                </SheetContent>
+              </Sheet>
+            )}
+
+            {/* 结算横幅 */}
+            {handResult && game.street === 'handOver' && (
+              <div className={cn('text-lg font-bold px-5 py-1.5 rounded-full anim-banner',
+                handResult.delta >= 0 ? 'bg-emerald-900/80 text-emerald-300 shadow-[0_0_18px_rgba(16,185,129,0.4)]' : 'bg-red-900/80 text-red-300 shadow-[0_0_18px_rgba(229,57,53,0.4)]')}>
+                {handResult.delta >= 0 ? '+' : ''}{handResult.delta}
+              </div>
+            )}
+
+            {/* 操作区 */}
+            {heroTurn && game.street !== 'handOver' && (
+              <div className="w-full max-w-lg flex flex-col items-center gap-2">
+                {showRaise && la!.canRaise && (
+                  <RaisePanel
+                    min={la!.minRaiseTo} max={la!.maxRaiseTo} step={10}
+                    value={raiseAmt} onChange={setRaiseAmt}
+                    pot={game.players.reduce((s, p) => s + p.handBet, 0)}
+                    bigBlind={game.bigBlind}
+                  />
+                )}
+                <div className="flex items-center gap-2 justify-center landscape:flex-wrap trainer-action-row">
+                  {(la!.canFold || la!.canCall) && (
+                    <Button className="btn-action rounded-full h-12 px-6 bg-gradient-to-b from-danger to-[#c62828] hover:from-[#ef5350] hover:to-danger text-white shadow-[0_6px_16px_rgba(229,57,53,0.4)] text-lg font-semibold" onClick={() => heroAct('fold')}>弃牌</Button>
+                  )}
+                  {la!.canCheck && (
+                    <Button className="btn-action rounded-full h-12 px-6 bg-gradient-to-b from-emerald-700/90 to-emerald-950 border border-emerald-500/60 text-emerald-100 text-lg font-semibold shadow-md" onClick={() => heroAct('check')}>过牌</Button>
+                  )}
+                  {la!.canCall && (
+                    <Button className="btn-action rounded-full h-12 px-6 bg-gradient-to-b from-emerald-700/90 to-emerald-950 border border-emerald-500/60 text-emerald-100 text-lg font-semibold shadow-md" onClick={() => heroAct('call')}>
+                      跟注 <span className="text-xl font-extrabold">{la!.callAmount}</span>
+                    </Button>
+                  )}
+                  {la!.canRaise && !showRaise && (
+                    <Button className="btn-action rounded-full h-12 px-6 bg-gradient-to-b from-gold-light to-gold hover:from-gold hover:to-gold-dark text-charcoal text-lg font-bold shadow-[0_6px_16px_rgba(212,168,87,0.4)]" onClick={() => setShowRaise(true)}>
+                      加注
+                    </Button>
+                  )}
+                  {la!.canRaise && showRaise && (
+                    <>
+                      <Button className="btn-action rounded-full h-12 px-5 text-lg font-bold text-white shadow-[0_6px_18px_rgba(192,38,211,0.45)] bg-gradient-to-b from-fuchsia-600 to-purple-900"
+                        onClick={() => heroAct(raiseAmt >= la!.maxRaiseTo ? 'allin' : game.currentBet > 0 ? 'raise' : 'bet', raiseAmt)}>
+                        {raiseAmt >= la!.maxRaiseTo ? `全下 ${raiseAmt}` : `加到 ${raiseAmt}`}
+                      </Button>
+                      <Button variant="ghost" className="btn-action rounded-full text-ivory/60" onClick={() => setShowRaise(false)}>收起</Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+            {!heroTurn && game.street !== 'handOver' && game.street !== 'showdown' && (
+              <p className="text-[13px] text-ivory/40 h-6">等待其他玩家行动…</p>
+            )}
+          </footer>
+        )}
+      </div>
 
       {/* 结算弹窗 */}
       {game && game.street === 'handOver' && (

@@ -214,10 +214,10 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 @layer components {
   /* 玻璃拟态卡片（PokerMind 规范：墨黑半透明 + 20px 模糊 + 饱和增强 + 金边） */
   .glass {
-    background: rgba(26, 26, 26, 0.6);
+    background: var(--glass-bg);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(212, 168, 87, 0.15);
+    border: 1px solid var(--glass-border);
   }
 
   /* 等宽数字 */
@@ -271,5 +271,109 @@ input, textarea { user-select: text; -webkit-user-select: text; }
     animation: progress-pulse 2s ease-in-out infinite;
     transform: none;
     width: 100%;
+  }
+}
+
+/* ============================================================
+   主题令牌：暗 / 亮双主题（`<html data-theme="light">` 切换，默认暗）
+   语义类 bg-ink / text-ivory / text-gold / bg-ink-card / bg-ink-light
+   均映射到下列 CSS 变量，亮色模式仅覆盖变量取值，不改组件类名。
+   ============================================================ */
+@layer base {
+  :root,
+  [data-theme="dark"] {
+    /* PokerMind 语义令牌 */
+    --c-ink: 10 10 10;
+    --c-ink-card: 26 26 26;
+    --c-ink-light: 42 42 42;
+    --c-ivory: 245 239 224;
+    --c-gold: 212 168 87;
+    --c-gold-light: 232 194 115;
+    --c-gold-dark: 166 124 50;
+    /* 玻璃拟态 / 页面画布 */
+    --glass-bg: rgba(26, 26, 26, 0.6);
+    --glass-border: rgba(212, 168, 87, 0.15);
+    --page-bg: 10 10 10;
+    --page-bg-image: url('/images/bg-dark-cards.png');
+    /* shadcn 设计变量（与既有 .dark 一致） */
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+  }
+
+  [data-theme="light"] {
+    /* PokerMind 语义令牌（亮色） */
+    --c-ink: 247 248 250;
+    --c-ink-card: 255 255 255;
+    --c-ink-light: 226 230 236;
+    --c-ivory: 33 37 43;
+    --c-gold: 166 124 50;
+    --c-gold-light: 196 150 74;
+    --c-gold-dark: 140 104 42;
+    /* 玻璃拟态 / 页面画布 */
+    --glass-bg: rgba(255, 255, 255, 0.72);
+    --glass-border: rgba(166, 124, 50, 0.30);
+    --page-bg: 233 236 241;
+    --page-bg-image: none;
+    /* shadcn 设计变量（亮色） */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
+  }
+}
+
+/* 页面画布背景（随主题切换） */
+.app-canvas {
+  background: radial-gradient(ellipse at top, #0c1a12 0%, #071007 45%, #030604 100%);
+}
+[data-theme="light"] .app-canvas {
+  background: radial-gradient(ellipse at top, #eef2f6 0%, #e3e8ee 45%, #d6dce5 100%);
+}
+
+/* ============================================================
+   横屏（orientation: landscape）适配
+   牌桌与操作区改为左右并排，操作区独立成可滚动右栏，按钮自动换行，
+   避免手机/平板横放时纵向空间不足导致的挤压与溢出。
+   ============================================================ */
+@media (orientation: landscape) {
+  .trainer-action-row {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .trainer-footer {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
   }
 }

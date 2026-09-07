@@ -12,6 +12,14 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 )
 
+// 应用启动即同步主题（读取 localStorage，默认 dark），避免首屏闪烁
+try {
+  const saved = localStorage.getItem('poker-theme');
+  if (saved === 'light' || saved === 'dark') {
+    document.documentElement.setAttribute('data-theme', saved);
+  }
+} catch { /* ignore */ }
+
 // 注册 Service Worker（PWA，仅生产环境）
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
