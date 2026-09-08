@@ -71,9 +71,9 @@
   }
   body {
     @apply bg-background text-foreground;
-    background-color: #0A0A0A;
-    color: #F5EFE0;
-    background-image: url('/images/bg-dark-cards.png');
+    /* 主题感知：默认暗（--background / --page-bg-image 由 [data-theme] 切换），
+       亮色模式下 --page-bg-image 为 none，背景自动转为浅色，不再写死纯黑。 */
+    background-image: var(--page-bg-image);
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
