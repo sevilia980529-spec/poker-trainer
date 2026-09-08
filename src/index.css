@@ -77,6 +77,10 @@
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
+    /* 文字渲染优化：提升小字清晰度，缓解「看不清」 */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 }
 /* ===== 牌桌动效 ===== */
@@ -218,6 +222,7 @@ input, textarea { user-select: text; -webkit-user-select: text; }
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
     border: 1px solid var(--glass-border);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 8px 24px rgba(0, 0, 0, 0.28);
   }
 
   /* 等宽数字 */
@@ -282,14 +287,14 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 @layer base {
   :root,
   [data-theme="dark"] {
-    /* PokerMind 语义令牌 */
-    --c-ink: 10 10 10;
-    --c-ink-card: 26 26 26;
-    --c-ink-light: 42 42 42;
-    --c-ivory: 245 239 224;
-    --c-gold: 212 168 87;
-    --c-gold-light: 232 194 115;
-    --c-gold-dark: 166 124 50;
+    /* PokerMind 语义令牌（暗色：暖调近黑，避免纯黑造成的高对比刺眼） */
+    --c-ink: 17 18 16;
+    --c-ink-card: 25 27 24;
+    --c-ink-light: 41 43 39;
+    --c-ivory: 242 237 226;
+    --c-gold: 214 178 104;
+    --c-gold-light: 234 203 132;
+    --c-gold-dark: 172 134 66;
     /* 玻璃拟态 / 页面画布 */
     --glass-bg: rgba(26, 26, 26, 0.6);
     --glass-border: rgba(212, 168, 87, 0.15);
@@ -318,14 +323,14 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   }
 
   [data-theme="light"] {
-    /* PokerMind 语义令牌（亮色） */
-    --c-ink: 247 248 250;
+    /* PokerMind 语义令牌（亮色：暖纸白，柔和不刺眼） */
+    --c-ink: 244 245 242;
     --c-ink-card: 255 255 255;
-    --c-ink-light: 226 230 236;
-    --c-ivory: 33 37 43;
-    --c-gold: 166 124 50;
-    --c-gold-light: 196 150 74;
-    --c-gold-dark: 140 104 42;
+    --c-ink-light: 232 234 229;
+    --c-ivory: 41 45 52;
+    --c-gold: 168 126 52;
+    --c-gold-light: 196 152 76;
+    --c-gold-dark: 142 106 44;
     /* 玻璃拟态 / 页面画布 */
     --glass-bg: rgba(255, 255, 255, 0.72);
     --glass-border: rgba(166, 124, 50, 0.30);
@@ -354,12 +359,20 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   }
 }
 
-/* 页面画布背景（随主题切换） */
+/* 可读性文本层级：替代散落的 text-ivory/xx 低透明度，保证小字清晰可读 */
+.text-caption { color: rgb(var(--c-ivory) / 0.80); }
+.text-hint   { color: rgb(var(--c-ivory) / 0.58); }
+
+/* 页面画布背景（随主题切换，深绿绒布质感，柔和不刺眼） */
 .app-canvas {
-  background: radial-gradient(ellipse at top, #0c1a12 0%, #071007 45%, #030604 100%);
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(28, 58, 42, 0.55) 0%, rgba(12, 26, 19, 0) 55%),
+    radial-gradient(ellipse at 50% 120%, #0a1712 0%, #07100c 50%, #050a08 100%);
 }
 [data-theme="light"] .app-canvas {
-  background: radial-gradient(ellipse at top, #eef2f6 0%, #e3e8ee 45%, #d6dce5 100%);
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(214, 224, 210, 0.7) 0%, rgba(214, 224, 210, 0) 55%),
+    radial-gradient(ellipse at 50% 120%, #eef1ec 0%, #e6eae4 50%, #dde2db 100%);
 }
 
 /* ============================================================

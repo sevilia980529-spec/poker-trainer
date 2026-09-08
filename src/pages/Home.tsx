@@ -62,7 +62,7 @@ export default function Home() {
         <section className="glass rounded-2xl p-5 space-y-3 animate-fade-up">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-xs text-ivory/60">当前段位</div>
+              <div className="text-xs text-caption">当前段位</div>
               <div className="flex items-center gap-2 mt-1">
                 <Icon name={level.icon} size={24} className="align-middle" />
                 <span className="text-xl font-bold" style={{ color: level.color }}>
@@ -71,14 +71,14 @@ export default function Home() {
               </div>
             </div>
             <div className="text-right">
-              <div className="text-xs text-ivory/60">总经验</div>
+              <div className="text-xs text-caption">总经验</div>
               <div className="text-xl font-bold text-gold mt-1 num">{xp.toLocaleString()} XP</div>
             </div>
           </div>
 
           {nextLevel && (
             <div className="space-y-1.5">
-              <div className="flex justify-between text-xs text-ivory/60">
+              <div className="flex justify-between text-xs text-caption">
                 <span>距离 {nextLevel.name}</span>
                 <span>还差 {xpToNext} XP</span>
               </div>
@@ -94,15 +94,15 @@ export default function Home() {
           <div className="grid grid-cols-3 gap-2 pt-2">
             <div className="text-center">
               <div className="text-2xl font-bold text-ivory num">{profile.handsPlayed}</div>
-              <div className="text-xs text-ivory/60">总场次</div>
+              <div className="text-xs text-caption">总场次</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-success num">{winRate}%</div>
-              <div className="text-xs text-ivory/60">胜率</div>
+              <div className="text-xs text-caption">胜率</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-info num">{consecutive}</div>
-              <div className="text-xs text-ivory/60">连续登录</div>
+              <div className="text-xs text-caption">连续登录</div>
             </div>
           </div>
         </section>
@@ -112,7 +112,7 @@ export default function Home() {
           <div className="flex items-center justify-between gap-3">
             <div className="flex-1">
               <h3 className="font-semibold text-ivory">每日签到</h3>
-              <p className="text-xs text-ivory/60 mt-0.5">
+              <p className="text-xs text-caption mt-0.5">
                 {checkedToday ? <><Icon e="✅" size={12} className="align-middle" /> 今日已签到，明天再来</> : `领取今日 ${CHECKIN_CHIPS} 欢乐豆 + 50 XP`}
               </p>
             </div>
@@ -161,14 +161,14 @@ export default function Home() {
               <Icon e="🃏" size={24} className="align-middle" />
               <div className="flex-1 text-left">
                 <div className="text-ivory font-bold">21点训练</div>
-                <div className="text-xs text-ivory/60">跟庄家对玩，Basic Strategy</div>
+                <div className="text-xs text-caption">跟庄家对玩，Basic Strategy</div>
               </div>
-              <Icon e="→" size={16} className="align-middle text-ivory/60" />
+              <Icon e="→" size={16} className="align-middle text-caption" />
             </div>
           </Button>
         </section>
 
-        <div className="text-center text-xs text-ivory/30 pt-4">
+        <div className="text-center text-xs text-hint pt-4">
           PokerMind · AI 德州陪练 · 让你成为更好的牌手
         </div>
       </main>

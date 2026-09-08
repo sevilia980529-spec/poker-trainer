@@ -4,6 +4,7 @@ import { loadProfile } from '../../store/points';
 import LevelBadge from './LevelBadge';
 import Avatar from '../Avatar';
 import Icon from '../Icon';
+import ThemeToggle from './ThemeToggle';
 
 export default function Header() {
   const navigate = useNavigate();
@@ -30,15 +31,18 @@ export default function Header() {
           </div>
         </button>
 
-        <button
-          onClick={() => navigate('/profile')}
-          className="flex items-center gap-1.5 bg-gradient-to-r from-gold-dark/20 to-gold/20 border border-gold/30 rounded-full px-3 py-1.5 active:scale-95 transition-transform"
-        >
-          <Icon e="💰" size={18} className="align-middle" />
-          <span className="text-sm font-bold text-gold num">
-            {chips.toLocaleString()}
-          </span>
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <button
+            onClick={() => navigate('/profile')}
+            className="flex items-center gap-1.5 bg-gradient-to-r from-gold-dark/20 to-gold/20 border border-gold/30 rounded-full px-3 py-1.5 active:scale-95 transition-transform"
+          >
+            <Icon e="💰" size={18} className="align-middle" />
+            <span className="text-sm font-bold text-gold num">
+              {chips.toLocaleString()}
+            </span>
+          </button>
+        </div>
       </div>
     </header>
   );

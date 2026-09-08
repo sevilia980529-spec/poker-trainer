@@ -91,9 +91,9 @@ module.exports = {
         'card': '0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3)',
         'card-hover': '0 6px 20px rgba(0, 0, 0, 0.5), 0 3px 6px rgba(0, 0, 0, 0.4)',
         'felt': '0 8px 32px rgba(0, 0, 0, 0.6), inset 0 2px 8px rgba(255, 255, 255, 0.05)',
-        'glow-gold': '0 0 20px rgba(212, 168, 87, 0.4)',
-        'glow-success': '0 0 12px rgba(67, 160, 71, 0.5)',
-        'glow-danger': '0 0 12px rgba(229, 57, 53, 0.5)',
+        'glow-gold': '0 0 16px rgba(214, 178, 104, 0.28)',
+        'glow-success': '0 0 10px rgba(67, 160, 71, 0.38)',
+        'glow-danger': '0 0 10px rgba(229, 57, 53, 0.38)',
       },
       fontFamily: {
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'PingFang SC', 'Microsoft YaHei', 'sans-serif'],

@@ -34,7 +34,8 @@ import {
 } from '../components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { cn } from '../lib/utils';
-import { Menu, GraduationCap, Volume2, VolumeX, Coins, Target, Club, Users, BookOpen, Spade, Trophy, Settings, Home as HomeIcon, Sun, Moon } from 'lucide-react';
+import { Menu, GraduationCap, Volume2, VolumeX, Coins, Target, Club, Users, BookOpen, Spade, Trophy, Settings, Home as HomeIcon } from 'lucide-react';
+import ThemeToggle from '../components/common/ThemeToggle';
 
 // 椭圆桌 5 个 AI 座位（hero 固定在桌面下方）——全部收进容器内侧，避免手机端挡牌/出屏
 const AI_SEAT_POS = [
@@ -97,15 +98,7 @@ export default function PokerTrainer() {
       return [10, 20];
     } catch { return [10, 20]; }
   });
-  // 主题：暗（默认）/ 亮，持久化到 localStorage，默认保持暗色
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    try { return (localStorage.getItem('poker-theme') as 'dark' | 'light') || 'dark'; }
-    catch { return 'dark'; }
-  });
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    try { localStorage.setItem('poker-theme', theme); } catch { /* ignore */ }
-  }, [theme]);
+  // 主题切换已抽到共享 <ThemeToggle />（useTheme hook），此处不再维护本地主题状态
   const heroStackRef = useRef(BUY_IN);
   const aiStacksRef = useRef<number[]>([]);
   const nickname = useUserStore((s) => s.nickname);
@@ -323,10 +316,7 @@ export default function PokerTrainer() {
             className="w-9 h-9 rounded-full glass border border-gold/20 flex items-center justify-center text-ivory">
             {soundOn ? <Volume2 className="w-[18px] h-[18px]" /> : <VolumeX className="w-[18px] h-[18px] text-ivory/40" />}
           </button>
-          <button onClick={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))} title="切换日/夜模式"
-            className="w-9 h-9 rounded-full glass border border-gold/20 flex items-center justify-center text-ivory">
-            {theme === 'dark' ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
-          </button>
+          <ThemeToggle />
           <Popover>
             <PopoverTrigger asChild>
               <button title="设置"
