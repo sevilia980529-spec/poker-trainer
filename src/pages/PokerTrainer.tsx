@@ -291,11 +291,11 @@ export default function PokerTrainer() {
               <Menu className="w-[18px] h-[18px]" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-white text-charcoal border border-ink-light/40">
-            <DropdownMenuItem asChild><Link to="/" className="flex items-center gap-2"><HomeIcon className="w-4 h-4 text-charcoal" />首页</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link to="/training" className="flex items-center gap-2"><Target className="w-4 h-4 text-charcoal" />训练中心</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link to="/blackjack" className="flex items-center gap-2"><Club className="w-4 h-4 text-emerald-600" />21点训练室</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link to="/room" className="flex items-center gap-2"><Users className="w-4 h-4 text-charcoal" />好友房</Link></DropdownMenuItem>
+          <DropdownMenuContent className="glass text-ivory border border-gold/25">
+            <DropdownMenuItem asChild><Link to="/" className="flex items-center gap-2"><HomeIcon className="w-4 h-4 text-ivory" />首页</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link to="/training" className="flex items-center gap-2"><Target className="w-4 h-4 text-ivory" />训练中心</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link to="/blackjack" className="flex items-center gap-2"><Club className="w-4 h-4 text-emerald-400" />21点训练室</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link to="/room" className="flex items-center gap-2"><Users className="w-4 h-4 text-ivory" />好友房</Link></DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setShowRules(true)}><BookOpen className="w-4 h-4 text-violet-600 mr-2" />规则与术语</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

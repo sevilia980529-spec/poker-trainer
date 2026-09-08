@@ -27,7 +27,11 @@ export function useTheme() {
   }, []);
 
   const apply = (next: Theme) => {
-    document.documentElement.setAttribute('data-theme', next);
+    const root = document.documentElement;
+    root.setAttribute('data-theme', next);
+    // Tailwind 配置 darkMode:["class"]，shadcn 组件的 dark: 变体依赖 .dark 类；
+    // 必须同步该类，否则选项卡/弹窗等组件在双主题下都不会切换配色。
+    root.classList.toggle('dark', next === 'dark');
     try { localStorage.setItem(STORAGE_KEY, next); } catch { /* ignore */ }
     window.dispatchEvent(new CustomEvent<Theme>(THEME_EVENT, { detail: next }));
   };

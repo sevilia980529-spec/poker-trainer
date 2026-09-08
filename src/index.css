@@ -389,4 +389,53 @@ input, textarea { user-select: text; -webkit-user-select: text; }
     padding-top: 0.5rem;
     padding-bottom: 0.5rem;
   }
+  /* 横屏时左右避让刘海/圆角安全区 */
+  .app-canvas {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* 手机横屏（高度受限）：进一步压缩纵向留白，把空间让给牌桌 */
+@media (orientation: landscape) and (max-height: 560px) {
+  .trainer-footer {
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
+  }
+  .trainer-action-row {
+    gap: 0.375rem;
+  }
+  .trainer-action-row > * {
+    flex: 1 1 auto;
+  }
+  /* 顶部工具栏按钮缩小，减少纵向占用 */
+  .glass.w-9.h-9,
+  .w-9.h-9 {
+    width: 2rem;
+    height: 2rem;
+  }
+}
+
+/* ============================================================
+   亮色模式兜底：把散落各处的「中性」硬编码深色映射为亮色对应值。
+   仅处理黑色蒙层 / 白色描边这类中性用法；彩色按钮上的 text-white
+   保持不变，以免破坏红/绿按钮的既有对比度。
+   ============================================================ */
+[data-theme="light"] .bg-black\/40,
+[data-theme="light"] .bg-black\/50,
+[data-theme="light"] .bg-black\/60,
+[data-theme="light"] .bg-black\/70 {
+  background-color: rgb(255 255 255 / 0.78);
+}
+/* 这些黑色蒙层内部的白色文字，在亮色下改为深色，避免白底白字 */
+[data-theme="light"] .bg-black\/40 .text-white,
+[data-theme="light"] .bg-black\/50 .text-white,
+[data-theme="light"] .bg-black\/60 .text-white,
+[data-theme="light"] .bg-black\/70 .text-white {
+  color: rgb(var(--c-ivory));
+}
+[data-theme="light"] .border-white\/5,
+[data-theme="light"] .border-white\/10,
+[data-theme="light"] .border-white\/20 {
+  border-color: rgb(0 0 0 / 0.10);
 }
