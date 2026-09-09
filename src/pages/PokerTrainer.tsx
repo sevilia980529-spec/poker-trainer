@@ -284,7 +284,7 @@ export default function PokerTrainer() {
   return (
     <div className="h-dvh flex flex-col app-canvas text-ivory overflow-hidden select-none">
       {/* ===== 浮动顶栏 ===== */}
-      <header className="relative z-30 flex items-center justify-between px-3 py-2 safe-top">
+      <header className="relative z-30 flex items-center justify-between flex-nowrap gap-2 px-3 py-2 safe-top landscape:py-1.5">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="w-9 h-9 rounded-full glass border border-gold/20 flex items-center justify-center text-ivory">
@@ -300,11 +300,11 @@ export default function PokerTrainer() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <div className="flex items-center gap-2 text-xl font-bold tracking-widest text-ivory">
-          <Spade className="w-6 h-6 text-emerald-400" />德州训练场
+        <div className="flex items-center gap-2 min-w-0 truncate whitespace-nowrap text-xl font-bold tracking-widest text-ivory landscape:text-base landscape:tracking-normal">
+          <Spade className="w-6 h-6 shrink-0 text-emerald-400" />德州训练场
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0 landscape:gap-1.5">
           <button onClick={() => setCoachOn(v => !v)} title="实时教练"
             className={cn('w-9 h-9 rounded-full border flex items-center justify-center transition-all',
               coachOn
@@ -377,7 +377,7 @@ export default function PokerTrainer() {
       <div className="flex-1 min-h-0 flex flex-col landscape:flex-row">
 
         {/* ===== 牌桌 ===== */}
-        <main className="flex-1 relative flex items-center justify-center px-2 min-h-0">
+        <main className="flex-1 relative flex items-center justify-center px-2 min-h-0 landscape:py-1">
           <div className="relative w-[min(96vw,820px)] aspect-[1.55/1] sm:aspect-[2.1/1] landscape:w-auto landscape:h-full landscape:aspect-[1.9/1] landscape:max-w-[58vw]">
             {/* 桌面：木质立体桌沿 + 绒布呢面 + 中心聚光 + 暗角（纵向内缩，给座位让位） */}
             <div className="absolute inset-x-0 top-[9%] bottom-[9%] rounded-[2.6rem] p-[9px]
@@ -592,8 +592,8 @@ export default function PokerTrainer() {
                         : advice.recommendation === 'fold' ? '建议弃牌'
                         : advice.recommendation === 'call' ? '建议跟注' : '建议过牌'}
                     </span>
-                    {advice.equity && <span className="text-gold font-mono">胜率 {(advice.equity.equity * 100).toFixed(0)}%</span>}
-                    <span className="text-ivory/40">详情 ›</span>
+                    {advice.equity && <span className="text-amber-200 font-mono">胜率 {(advice.equity.equity * 100).toFixed(0)}%</span>}
+                    <span className="text-emerald-100/70">详情 ›</span>
                   </button>
                 </SheetTrigger>
                 <SheetContent side="right" className="bg-ink border-gold/20 text-ivory w-full sm:max-w-md overflow-y-auto">

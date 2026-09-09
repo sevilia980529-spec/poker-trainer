@@ -144,7 +144,7 @@ export default function Blackjack() {
   const netResult = game && settled ? totalPayout(game) + (game.insurancePayout ?? 0) : 0;
 
   return (
-    <div className="min-h-dvh bg-[#071007] text-ivory flex flex-col">
+    <div className="min-h-dvh app-canvas text-ivory flex flex-col">
       <header className="flex items-center gap-3 px-4 py-3 flex-wrap safe-top">
         <Link to="/" className="text-ivory/60 hover:text-ivory text-base flex items-center gap-1.5">
           <ArrowLeft className="w-5 h-5" />牌桌
@@ -152,7 +152,7 @@ export default function Blackjack() {
         <Link to="/drills" className="text-ivory/60 hover:text-ivory text-base">专项训练</Link>
         <button onClick={() => setShowRules(true)} className="text-ivory/60 hover:text-ivory text-base">规则</button>
         <h1 className="text-xl font-bold">21点训练室</h1>
-        <span className={cn('text-sm font-mono', sessionProfit > 0 ? 'text-emerald-400' : sessionProfit < 0 ? 'text-red-400' : 'text-ivory/45')}>
+        <span className={cn('text-sm font-mono', sessionProfit > 0 ? 'text-emerald-400' : sessionProfit < 0 ? 'text-red-400' : 'text-hint')}>
           盈亏 {sessionProfit >= 0 ? '+' : ''}{sessionProfit}
         </span>
         <div className="ml-auto flex items-center gap-3 text-sm text-ivory/80">
@@ -329,7 +329,7 @@ export default function Blackjack() {
           {advice && (
             <div className="rounded-xl bg-ink-card/80 border border-emerald-800/60 p-3 text-sm">
               <p className="font-semibold text-emerald-300 mb-1"><Icon e="🎓" size={14} className="align-middle" /> 基本策略建议：
-                <span className="text-white font-bold ml-1">{ACTION_LABEL[advice.action]}</span>
+                <span className="text-ivory font-bold ml-1">{ACTION_LABEL[advice.action]}</span>
               </p>
               <p className="text-xs text-ivory/60 leading-relaxed">{advice.why}</p>
             </div>
@@ -337,8 +337,8 @@ export default function Blackjack() {
           {showCount && ci && (
             <div className="rounded-xl bg-ink-card/80 border border-purple-800/60 p-3 text-sm">
               <p className="font-semibold text-purple-300 mb-1">
-                <Icon e="🔢" size={14} className="align-middle" /> Hi-Lo：累积 <span className="font-mono text-white">{ci.running > 0 ? '+' : ''}{ci.running}</span>
-                {' '}· 真计数 <span className="font-mono text-white">{ci.trueCount > 0 ? '+' : ''}{ci.trueCount}</span>
+                <Icon e="🔢" size={14} className="align-middle" /> Hi-Lo：累积 <span className="font-mono text-ivory">{ci.running > 0 ? '+' : ''}{ci.running}</span>
+                {' '}· 真计数 <span className="font-mono text-ivory">{ci.trueCount > 0 ? '+' : ''}{ci.trueCount}</span>
                 {' '}· 剩 {ci.decksLeft} 副
               </p>
               <p className="text-xs text-ivory/60 leading-relaxed">{ci.edgeHint}</p>
@@ -361,7 +361,7 @@ export default function Blackjack() {
           )}
         </div>
 
-        <p className="text-[11px] text-ivory/35 text-center pb-3">
+        <p className="text-[11px] text-hint text-center pb-3">
           规则：4 副牌靴 · 庄家所有 17 停牌 · Blackjack 赔 1.5 倍 · 双倍 · 分牌（最多 4 手，分 A 各补一张）· 保险赔 2:1
         </p>
       </main>

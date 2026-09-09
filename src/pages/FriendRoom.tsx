@@ -157,7 +157,7 @@ export default function FriendRoom() {
   const seatRel = (pid: number) => game ? (pid - youId + game.players.length) % game.players.length : pid;
 
   return (
-    <div className="min-h-dvh bg-[#071007] text-ivory flex flex-col">
+    <div className="min-h-dvh app-canvas text-ivory flex flex-col">
       <header className="flex items-center gap-3 px-4 py-3 safe-top">
         <Link to="/" className="text-ivory/60 hover:text-ivory text-base flex items-center gap-1.5">
           <ArrowLeft className="w-5 h-5" />牌桌

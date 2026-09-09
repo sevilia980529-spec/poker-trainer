@@ -232,7 +232,7 @@ export default function Guandan() {
   };
 
   return (
-    <div className="min-h-screen bg-[#071007] text-ivory flex flex-col">
+    <div className="min-h-screen app-canvas text-ivory flex flex-col">
       <header className="flex items-center gap-4 px-5 py-3 border-b border-ink-light/50 bg-ink-card/60 flex-wrap">
         <Link to="/" className="text-ivory/60 hover:text-ivory text-base"><Icon e="←" size={15} className="align-middle" /> 德州牌桌</Link>
         <Link to="/drills" className="text-ivory/60 hover:text-ivory text-base"><Icon e="🎯" size={15} className="align-middle" /> 专项训练</Link>
