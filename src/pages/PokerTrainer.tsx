@@ -380,12 +380,8 @@ export default function PokerTrainer() {
         <main className="flex-1 relative flex items-center justify-center px-2 min-h-0 landscape:py-1">
           <div className="relative w-[min(96vw,820px)] aspect-[1.55/1] sm:aspect-[2.1/1] landscape:w-auto landscape:h-full landscape:aspect-[1.9/1] landscape:max-w-[58vw]">
             {/* 桌面：木质立体桌沿 + 绒布呢面 + 中心聚光 + 暗角（纵向内缩，给座位让位） */}
-            <div className="absolute inset-x-0 top-[9%] bottom-[9%] rounded-[2.6rem] p-[9px]
-              bg-[linear-gradient(150deg,#6b4226_0%,#3a2616_48%,#241509_100%)]
-              shadow-[0_20px_55px_rgba(0,0,0,0.65),inset_0_0_0_1px_rgba(255,255,255,0.06)]">
-              <div className="relative w-full h-full rounded-[2rem] overflow-hidden
-                bg-[url('/images/bg-table-felt.png')] bg-cover bg-center
-                shadow-[inset_0_26px_74px_rgba(0,0,0,0.55),inset_0_-14px_36px_rgba(0,0,0,0.4)]">
+            <div className="absolute inset-x-0 top-[9%] bottom-[9%] rounded-[2.6rem] p-[9px] table-rim">
+              <div className="relative w-full h-full rounded-[2rem] overflow-hidden table-felt table-felt-inner">
                 {/* 绒布细噪点 */}
                 <div className="absolute inset-0 opacity-[0.07] mix-blend-overlay pointer-events-none"
                   style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.7) 1px,transparent 1px)', backgroundSize: '4px 4px' }} />
@@ -393,8 +389,7 @@ export default function PokerTrainer() {
                 <div className="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2 w-3/5 h-2/5 rounded-[50%] pointer-events-none"
                   style={{ background: 'radial-gradient(ellipse, rgba(255,255,210,0.13) 0%, transparent 70%)' }} />
                 {/* 暗角 */}
-                <div className="absolute inset-0 rounded-[2rem] pointer-events-none"
-                  style={{ boxShadow: 'inset 0 0 70px 18px rgba(0,0,0,0.45)' }} />
+                <div className="absolute inset-0 rounded-[2rem] pointer-events-none table-vignette" />
               </div>
             </div>
 

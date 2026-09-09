@@ -439,3 +439,42 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 [data-theme="light"] .border-white\/20 {
   border-color: rgb(0 0 0 / 0.10);
 }
+
+/* ============================================================
+   牌桌：木质桌沿 + 绒布呢面（随主题切换）
+   暗色保留原深木 / 深绿绒布；亮色改为浅木 + 浅绿绒布，
+   并同步削弱内阴影与暗角，避免浅绿被压暗失真。
+   ============================================================ */
+.table-rim {
+  background: linear-gradient(150deg, #6b4226 0%, #3a2616 48%, #241509 100%);
+  box-shadow: 0 20px 55px rgba(0, 0, 0, 0.65), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+.table-felt {
+  background-color: #0e5c3a;
+  background-image: url('/images/bg-table-felt.png');
+  background-size: cover;
+  background-position: center;
+}
+.table-felt-inner {
+  box-shadow: inset 0 26px 74px rgba(0, 0, 0, 0.55), inset 0 -14px 36px rgba(0, 0, 0, 0.4);
+}
+.table-vignette {
+  box-shadow: inset 0 0 70px 18px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="light"] .table-rim {
+  background: linear-gradient(150deg, #e2cdb0 0%, #c9ad8b 48%, #b1936f 100%);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28), inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+}
+[data-theme="light"] .table-felt {
+  background-color: #59a676;
+  background-image:
+    radial-gradient(ellipse at 50% 32%, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0) 62%),
+    linear-gradient(160deg, #74bd93 0%, #59a676 52%, #478d63 100%);
+}
+[data-theme="light"] .table-felt-inner {
+  box-shadow: inset 0 18px 48px rgba(0, 0, 0, 0.16), inset 0 -10px 26px rgba(0, 0, 0, 0.10);
+}
+[data-theme="light"] .table-vignette {
+  box-shadow: inset 0 0 64px 14px rgba(0, 0, 0, 0.16);
+}
