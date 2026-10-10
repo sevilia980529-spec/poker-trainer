@@ -180,6 +180,13 @@ export default function FriendRoom() {
         <main className="flex-1 flex items-center justify-center p-6">
           <div className="w-full max-w-sm rounded-xl bg-ink-card border border-ink-light/60 p-6 space-y-4">
             <h2 className="font-bold text-lg">和好友一起训练</h2>
+            {/* 游戏选择：德州扑克（当前页） / 21点（跳转新建联机页） */}
+            <div className="flex rounded-lg bg-ink-light/70 p-1 text-sm">
+              <button type="button" onClick={() => navigate('/friend-room')}
+                className="flex-1 rounded-md py-1.5 font-medium bg-gold text-black">德州扑克</button>
+              <button type="button" onClick={() => navigate('/friend-room/bj')}
+                className="flex-1 rounded-md py-1.5 font-medium text-ivory/70 hover:text-ivory">21点</button>
+            </div>
             <p className="text-xs text-ivory/60 leading-relaxed">
               把这个网址发给好友，输入同一个房间码即可同桌对练。每人固定 {10000} 分起手，
               分数跨手累积、可以为负（负分玩家每手信用上桌），空位由 AI 自动补齐到 6 人。

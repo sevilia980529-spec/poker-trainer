@@ -7,6 +7,7 @@ import TrainingHub from './pages/TrainingHub'
 import Drills from './pages/Drills'
 import Blackjack from './pages/Blackjack'
 import FriendRoom from './pages/FriendRoom'
+import BjFriendRoom from './pages/BjFriendRoom'
 import Profile from './pages/Profile'
 import LoadingScreen from './components/common/LoadingScreen'
 import AccountGate from './components/AccountGate'
@@ -42,6 +43,8 @@ export default function App() {
         <Route path="/drills" element={<Drills />} />
         <Route path="/blackjack" element={<Blackjack />} />
         <Route path="/room" element={<FriendRoom />} />
+        <Route path="/friend-room" element={<FriendRoom />} />
+        <Route path="/friend-room/bj" element={<BjFriendRoom />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
