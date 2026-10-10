@@ -574,3 +574,52 @@ export function bjTableAutoApply(s: BjTableState, seat: number): BjTableState {
   }
   return bjTableApply(s, seat, action);
 }
+
+// ---------------- 服务端线协议脱敏 ----------------
+
+/**
+ * 服务端下发给客户端的脱敏拷贝（纯函数，不依赖 ws，方便单测）。
+ *
+ * 信息泄漏点必须剔除：`shoe`（整靴牌）、`seenCards`（已发过的牌）、`rng`（函数）。
+ * 牌面隐藏规则（客户端依赖的线协议契约）：
+ *   · phase === 'settled'：整体可见（保留所有 hands 的 cards），仍删 shoe/seenCards/rng。
+ *   · 否则（未结算）：对每个座位 i：
+ *       - i === viewerSeat：保留其全部 hands（全部牌可见）。
+ *       - i === dealerIdx：庄家第一手第一张（明牌）保留，其余庄家牌清空（只留 cards[0]）。
+ *       - 其它：该玩家每个 hands[].cards 全部替换为 []（隐藏）。
+ *   保留 chips / insuranceBet / insurancePayout / result / payout / activeHand /
+ *   isAI / name / seat / id / bet / done 等 UI/计分字段，只隐藏原始牌数组。
+ *
+ * 返回新对象，绝不 mutate 入参（先摘 rng 再 structuredClone 再挂回 no-op）。
+ */
+export function bjSanitizeState(state: BjTableState, viewerSeat: number): BjTableState {
+  // 先摘 rng：structuredClone 无法克隆函数字段（rng 是函数，必须剔除）
+  const data: Record<string, any> = { ...state };
+  delete data.rng;
+  const clone = structuredClone(data) as Record<string, any>;
+  // 剔除信息泄漏字段（shoe / seenCards 不通过 WS 发送）
+  delete clone.shoe;
+  delete clone.seenCards;
+  // rng 类型必填，挂回 no-op（客户端不会调用）
+  clone.rng = () => 0;
+
+  const phase: BjTablePhase = clone.phase;
+  if (phase !== 'settled') {
+    const dealerIdx: number = clone.dealerIdx;
+    for (let i = 0; i < clone.players.length; i++) {
+      if (i === viewerSeat) continue; // 自己的手牌全可见
+      const p = clone.players[i];
+      if (i === dealerIdx) {
+        // 庄家：明牌（第一手第一张）保留，其余牌隐藏
+        p.hands = p.hands.map((h: any, hi: number) =>
+          hi === 0
+            ? { ...h, cards: h.cards && h.cards.length > 0 ? [h.cards[0]] : [] }
+            : { ...h, cards: [] },
+        );
+      } else {
+        p.hands = p.hands.map((h: any) => ({ ...h, cards: [] }));
+      }
+    }
+  }
+  return clone as BjTableState;
+}
